@@ -1,5 +1,7 @@
 # Conta Google das comunicações
 
+Guia interativo com soluções e diagnóstico: [Documentação do SIGA](https://siga-private.emisiu1401.workers.dev/documentacao.html). Veja o [registro e manutenção](22_DOCUMENTACAO_E_TROUBLESHOOTING.md).
+
 O administrador pode trocar a caixa em **Configurações → Conta Google das comunicações**. A conta usada para receber/enviar mensagens é independente da identidade de acesso ao SIGA. Trocar a caixa não troca o proprietário nem os papéis do sistema.
 
 ## O que fazer quando aparece configuração inicial pendente
@@ -50,7 +52,7 @@ Depois do retorno, Configurações mantém a orientação visível no painel da 
 
 Uma página de erro 500 exibida pelo próprio Google antes do retorno ao SIGA é uma falha diferente; não gera diagnóstico de callback. Sem a mensagem da nova tentativa, o registro genérico anterior não permite afirmar a causa original.
 
-Em 24/10/2026, uma nova referência identificou `TypeError` na etapa `exchange`. Reproduzido e corrigido o uso de `redirect: "error"`, incompatível com workerd, para `manual` com rejeição de respostas não-2xx. Isso preserva o bloqueio de redirecionamentos externos. O teste passou a usar a implementação HTTP nativa do runtime, com saída interceptada e respostas fictícias; o mock anterior de `fetch` escondia essa incompatibilidade. Após a atualização, a conexão real ainda precisa ser concluída pessoalmente pelo titular com uma nova autorização.
+Em 24/10/2026, uma nova referência identificou `TypeError` na etapa `exchange`. Reproduzido e corrigido o uso de `redirect: "error"`, incompatível com workerd, para `manual` com rejeição de respostas não-2xx. Isso preserva o bloqueio de redirecionamentos externos. O teste passou a usar a implementação HTTP nativa do runtime, com saída interceptada e respostas fictícias; o mock anterior de `fetch` escondia essa incompatibilidade. Depois da atualização e da habilitação da Gmail API pelo titular, ele confirmou a conexão. A presença de uma conexão pausada foi conferida no banco; nenhuma mensagem real foi lida para essa conferência.
 
 ## Estado desta entrega
 

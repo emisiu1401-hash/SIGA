@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Guia de operação e solução de problemas do SIGA: conta Google, OAuth, acesso e comunicações."
+    />
+    <title>Documentação e solução de problemas · SIGA</title>
+    <link rel="icon" href="/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/info.css" />
+    <link rel="stylesheet" href="/documentacao.css" />
+    <script type="module" src="/documentacao.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+    <header>
+      <a class="brand" href="/"><img src="/mark.svg" alt="" />SIGA</a>
+      <nav aria-label="Atalhos da documentação">
+        <a href="/#settings">Voltar às Configurações</a>
+        <a href="/#mail">Correspondência</a>
+      </nav>
+    </header>
+    <main id="conteudo" tabindex="-1">
+      <p class="eyebrow">Operação e suporte</p>
+      <h1>Documentação do SIGA</h1>
+      <p class="intro">
+        O caminho para trocar a conta Google e resolver os problemas que
+        encontramos na implantação. Cada orientação informa onde agir e o que
+        conferir ao terminar.
+      </p>
+      <p class="updated">
+        Revisado em 24/10/2026 · guia da implantação SIGA em Cloudflare Workers.
+      </p>
+      <nav class="topics" aria-label="Assuntos do guia">
+        <a href="#diagnostico">Diagnóstico atual</a
+        ><a href="#trocar-conta">Trocar conta Google</a
+        ><a href="#pausa">Conectada, mas pausada</a
+        ><a href="#erros">Resolver um erro</a
+        ><a href="#configuracao">Configuração inicial</a
+        ><a href="#acesso">Acesso e usuários</a
+        ><a href="#operacao">Novas demandas</a>
+      </nav>
+
+      <section id="diagnostico" aria-labelledby="diagnostico-title">
+        <h2 id="diagnostico-title">1. Confira o estado deste ambiente</h2>
+        <p>
+          Consulta de leitura às configurações da sua sessão. Não inicia
+          autorização, sincronização, envio ou alteração de configuração. O
+          diagnóstico confirma o estado do SIGA; a marca, o projeto Google e as
+          políticas da organização são conferidos nos respectivos consoles.
+        </p>
+        <div class="diagnostic-panel">
+          <p id="diagnostic-summary" role="status">Consultando a sessão…</p>
+          <dl id="diagnostic-values" hidden></dl>
+          <p id="diagnostic-next"></p>
+          <p id="diagnostic-time" class="updated"></p>
+          <div class="actions">
+            <button id="diagnostic-refresh" type="button">
+              Atualizar diagnóstico</button
+            ><button id="diagnostic-copy" type="button" disabled>
+              Copiar diagnóstico sem dados pessoais
+            </button>
+          </div>
+          <p id="copy-status" role="status"></p>
+          <details id="copy-fallback" hidden>
+            <summary>Selecionar diagnóstico para copiar</summary>
+            <label for="diagnostic-report"
+              >Relatório sem e-mail, token ou senha</label
+            ><textarea id="diagnostic-report" readonly rows="10"></textarea>
+          </details>
+        </div>
+      </section>
+
+      <section id="trocar-conta" aria-labelledby="troca-title">
+        <h2 id="troca-title">2. Trocar a conta Google das comunicações</h2>
+        <p>
+          <strong
+            >A caixa de comunicações é independente da conta usada para entrar
+            no SIGA.</strong
+          >
+          Trocar a caixa não muda sua senha, o proprietário, os perfis da equipe
+          ou a conta Cloudflare.
+        </p>
+        <p>
+          Para passar da caixa pessoal de testes à institucional, normalmente
+          você reutiliza o mesmo cliente OAuth, a Gmail API já habilitada e o
+          mesmo endereço de retorno. Uma troca de caixa, por si só, não exige
+          outro projeto ou novos Secrets Google.
+        </p>
+        <ol class="steps">
+          <li>
+            <strong>Prepare a nova conta.</strong> Confirme que ela tem Gmail e
+            que você pode autorizar o acesso. Se o aplicativo Google estiver em
+            <em>Teste</em>, adicione essa conta em Google Auth Platform →
+            Público-alvo → Usuários de teste. Contas de organização podem
+            depender do administrador Google Workspace.
+          </li>
+          <li>
+            <strong>Revise o que está em andamento.</strong> Confira
+            Correspondência e as mensagens pendentes. Aguarde operações em curso
+            terminarem; a troca é bloqueada enquanto houver processamento.
+            Depois da troca, o SIGA monitora somente a nova caixa, não as duas
+            ao mesmo tempo.
+          </li>
+          <li>
+            <strong
+              >Abra
+              <a href="/#settings"
+                >Configurações → Conta Google das comunicações</a
+              >.</strong
+            >
+            Informe o endereço completo da nova caixa. Para comunicações de
+            saída e recuperação de senha, marque
+            <strong>Solicitar também permissão para envio</strong>. Conceder
+            essa permissão não liga o envio real automaticamente.
+          </li>
+          <li>
+            <strong>Clique em Conectar ou trocar conta Google.</strong> No
+            Google, selecione exatamente a conta informada e confira as
+            permissões. Use uma nova autorização iniciada pelo SIGA; não
+            reutilize o endereço de retorno de outra tentativa.
+          </li>
+          <li>
+            <strong>Confira o resultado no SIGA.</strong> A mensagem esperada é
+            “Conta Google conectada e verificada”. Confira o endereço exibido em
+            <strong>Conta conectada</strong>. A nova conexão fica pausada até a
+            retomada.
+          </li>
+          <li>
+            <strong>Revise a fila anterior.</strong> Mensagens pendentes das
+            caixas envolvidas ficam retidas para revisão; não são transferidas
+            nem reenviadas automaticamente pela conta nova. As demandas e seus
+            históricos permanecem no sistema.
+          </li>
+          <li>
+            <strong>Retome somente quando estiver pronto.</strong> Confira as
+            condições da seção <a href="#pausa">Conectada, mas pausada</a>.
+            Depois da retomada, faça uma sincronização supervisionada em
+            Correspondência e confira as entradas na fila de revisão.
+          </li>
+        </ol>
+        <div class="notice">
+          <strong>Ponto de corte:</strong> a primeira conexão registra o
+          histórico atual da caixa; não importa silenciosamente todos os e-mails
+          antigos. Respostas que chegarem à caixa anterior deixam de ser
+          coletadas após a troca. Planeje o acompanhamento dessas mensagens no
+          Gmail anterior.
+        </div>
+        <p>
+          <strong>Se precisar voltar:</strong> reconecte a caixa anterior pelo
+          mesmo formulário. Uma tentativa cancelada, recusada ou com erro
+          preserva a conexão anterior. Após uma troca concluída, voltar exige
+          nova autorização; não há restauração automática do token anterior.
+        </p>
+        <p>
+          Depois de confirmar a nova caixa, você pode remover a autorização do
+          SIGA na segurança da conta Google antiga, se ela não for mais
+          necessária. A troca no SIGA não revoga essa autorização no Google por
+          conta própria.
+        </p>
+      </section>
+
+      <section id="pausa" aria-labelledby="pausa-title">
+        <h2 id="pausa-title">
+          3. “Conectada e verificada”, mas as comunicações estão pausadas
+        </h2>
+        <p>
+          <strong>A conexão deu certo.</strong> A pausa após conectar ou trocar
+          a conta é uma etapa de controle. Antes de operar, confira o endereço e
+          as mensagens retidas.
+        </p>
+        <ul>
+          <li>
+            <strong>Retomar comunicações</strong> está em Configurações e exige
+            administrador. Se o botão estiver desativado e aparecer “A
+            plataforma ainda está em simulação”, falta a ativação das
+            integrações na implantação.
+          </li>
+          <li>
+            <strong>Leitura real:</strong> a plataforma precisa estar fora da
+            simulação e a conexão deve ter sido retomada. Sincronizar em
+            simulação não lê a caixa.
+          </li>
+          <li>
+            <strong>Envio real:</strong> além disso, a conexão precisa ter
+            permissão de envio e a implantação deve permitir envio. A
+            recuperação de senha por Gmail depende dessas mesmas condições.
+          </li>
+          <li>
+            <strong>Rotina de coleta:</strong> retomar a conta não cria um
+            agendamento. Se não houver rotina configurada na implantação, acione
+            a sincronização supervisionada em Correspondência.
+          </li>
+          <li>
+            <strong>IA:</strong> salvar um token não ativa o motor real. O
+            provedor precisa estar configurado e a simulação desativada. A IA
+            continua apenas propondo interpretações para revisão humana.
+          </li>
+        </ul>
+        <details>
+          <summary>
+            Para o administrador da implantação: condições de ativação
+          </summary>
+          <div>
+            <p>
+              No Worker <code>siga-private</code>, em <strong>Produção</strong>,
+              <code>SIMULATION_MODE=false</code> permite integrações reais. Para
+              envio, <code>EMAIL_SEND_ENABLED=true</code> também é necessário,
+              junto com o escopo Gmail de envio. Depois, retome a conexão no
+              SIGA. Essas alterações têm efeito operacional; faça-as somente na
+              ativação aprovada.
+            </p>
+            <p>
+              O motor real usa <code>AI_PROVIDER=openai</code> e credencial
+              válida. Preserve os demais parâmetros e Secrets ao publicar. O
+              guia e os botões de diagnóstico não alteram nenhuma dessas opções.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <section id="erros" aria-labelledby="erros-title">
+        <h2 id="erros-title">4. Encontre a mensagem e siga a correção</h2>
+        <label class="search-label" for="help-search"
+          >Pesquisar mensagem, código ou assunto</label
+        >
+        <input
+          id="help-search"
+          type="search"
+          maxlength="200"
+          placeholder="Ex.: Gmail API, MFA, access_denied, pausa"
+          autocomplete="off"
+        />
+        <p id="help-count" role="status"></p>
+        <p id="help-empty" hidden>
+          Nenhum resultado. Tente uma palavra como “Google”, “senha” ou “envio”,
+          ou apague a busca.
+        </p>
+        <div id="help-articles">
+          <details id="erro-api" data-codes="GMAIL_API_DISABLED">
+            <summary>“Ative a Gmail API no mesmo projeto”</summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> Google Cloud. A autorização avançou,
+                mas o Google recusou a consulta à caixa porque o serviço Gmail
+                API está desativado.
+              </p>
+              <ol>
+                <li>
+                  Abra a
+                  <a
+                    href="https://console.cloud.google.com/apis/library/gmail.googleapis.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >Gmail API na biblioteca</a
+                  >.
+                </li>
+                <li>
+                  No topo, selecione o projeto que contém o cliente OAuth usado
+                  pelo SIGA.
+                </li>
+                <li>
+                  Clique em <strong>Ativar</strong>. Se aparecer
+                  <strong>Gerenciar</strong>, confira se é o projeto correto.
+                </li>
+                <li>Aguarde a propagação e inicie uma nova conexão no SIGA.</li>
+              </ol>
+              <p>
+                <strong>Conferência final:</strong> retorno com conta conectada
+                e verificada. Verificar a marca Google não habilita a Gmail API.
+              </p>
+            </div>
+          </details>
+          <details id="erro-testadores" data-codes="access_denied">
+            <summary>
+              Google: “403 access_denied” ou “somente testadores aprovados”
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> Google Auth Platform → Público-alvo.
+                Em Teste, adicione o endereço exato que vai autorizar a caixa em
+                <strong>Usuários de teste</strong>, no mesmo projeto do cliente
+                OAuth.
+              </p>
+              <p>
+                Se o Google indicar bloqueio da organização, peça ao
+                administrador Google Workspace a análise do aplicativo e das
+                permissões. Não amplie o acesso indiscriminadamente. Publicar a
+                marca não substitui as regras de público-alvo ou de acesso aos
+                dados.
+              </p>
+              <p>
+                <strong>Conferência final:</strong> a conta correta consegue
+                visualizar e concluir o consentimento.
+              </p>
+            </div>
+          </details>
+          <details
+            id="erro-oauth"
+            data-codes="GMAIL_OAUTH_SETUP GMAIL_OAUTH_CLIENT GMAIL_OAUTH_EXCHANGE"
+          >
+            <summary>
+              “Configuração inicial pendente”, “Aguardando OAuth” ou cliente
+              recusado
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> Cloudflare → Workers &amp; Pages →
+                <code>siga-private</code> → Configurações → Variáveis e segredos
+                → <strong>Produção</strong>.
+              </p>
+              <p>
+                Cadastre <code>GOOGLE_CLIENT_ID</code> e
+                <code>GOOGLE_CLIENT_SECRET</code> como
+                <strong>Secrets</strong> do mesmo cliente web Google. Cadastrar
+                somente em <strong>Base de Prévias</strong> não configura o site
+                de Produção. Conclua a ação de salvar/aplicar/publicar
+                apresentada pelo painel; o nome da ação pode variar.
+              </p>
+              <p>
+                Volte ao SIGA e use
+                <strong>Já configurei · verificar novamente</strong> ou atualize
+                a página. O formulário de conexão deve aparecer. Se o Google
+                recusar o cliente, confira se os dois valores pertencem ao mesmo
+                cliente e se ele continua ativo. Não cole segredos na
+                documentação, no GitHub ou em capturas compartilhadas.
+              </p>
+            </div>
+          </details>
+          <details
+            id="erro-retorno"
+            data-codes="redirect_uri_mismatch GMAIL_REDIRECT"
+          >
+            <summary>
+              Google: “redirect_uri_mismatch” ou endereço de retorno incorreto
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> Google Auth Platform → Clientes →
+                cliente do tipo Aplicativo da Web → URIs de redirecionamento
+                autorizados.
+              </p>
+              <p>Use exatamente este retorno do ambiente privado:</p>
+              <p>
+                <code id="oauth-callback"
+                  >https://siga-private.emisiu1401.workers.dev/api/gmail/oauth/callback</code
+                >
+              </p>
+              <button type="button" id="copy-callback">
+                Copiar endereço de retorno
+              </button>
+              <p id="callback-copy-status" role="status"></p>
+              <p>
+                A variável <code>GOOGLE_OAUTH_REDIRECT_URI</code> no Worker
+                privado deve corresponder ao mesmo endereço. Não use o endereço
+                da demonstração e não acrescente barra ao final. Salve no Google
+                e inicie outra autorização pelo SIGA.
+              </p>
+            </div>
+          </details>
+          <details id="erro-conta" data-codes="MAILBOX_MISMATCH">
+            <summary>
+              “A conta autorizada não corresponde ao e-mail informado”
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> no formulário do SIGA e no seletor
+                de contas Google. Informe o novo endereço completo e selecione
+                essa mesma conta no consentimento. Ter várias contas abertas no
+                navegador não altera o endereço que o SIGA espera.
+              </p>
+              <p>
+                <strong>Conferência final:</strong> o endereço exibido em Conta
+                conectada é o pretendido. A tentativa recusada mantém a conexão
+                anterior.
+              </p>
+            </div>
+          </details>
+          <details
+            id="erro-permissoes"
+            data-codes="GMAIL_OAUTH_SCOPES GMAIL_OAUTH_REFRESH GMAIL_PROFILE"
+          >
+            <summary>
+              Permissões insuficientes, acesso contínuo ausente ou perfil não
+              verificado
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> nova autorização Google. Conceda a
+                leitura solicitada e, se necessário, marque envio no formulário
+                do SIGA antes de conectar. O aplicativo precisa de autorização
+                contínua para operar sem pedir login a cada sincronização.
+              </p>
+              <p>
+                Confirme que a conta tem Gmail, que a Gmail API está ativa no
+                projeto e que a organização permite o acesso. Se persistir,
+                encaminhe a mensagem e a referência para o suporte. Não remova
+                autorizações indiscriminadamente; isso pode interromper uma
+                conexão ainda em uso.
+              </p>
+            </div>
+          </details>
+          <details
+            id="erro-expirada"
+            data-codes="GMAIL_OAUTH_STATE GMAIL_OAUTH_EXPIRED GMAIL_OAUTH_CODE GMAIL_OAUTH_CANCELLED"
+          >
+            <summary>
+              Autorização expirada, já utilizada, cancelada ou código recusado
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> Configurações do SIGA. Abra uma
+                única tentativa nova, com a sessão do administrador ativa. Não
+                recarregue o callback nem use Voltar para repetir uma
+                autorização antiga. Cookies são necessários para vincular a
+                tentativa à sessão.
+              </p>
+              <p>
+                Uma tentativa OAuth do SIGA vence em dez minutos e é de uso
+                único. Se cancelar, a conta anterior é mantida. Autorização
+                Google de aplicativo em teste também pode exigir reconexão
+                periódica; confira o público-alvo no Google Cloud.
+              </p>
+            </div>
+          </details>
+          <details
+            id="erro-ocupado"
+            data-codes="GMAIL_BUSY GMAIL_OAUTH_RATE GMAIL_STALE GMAIL_DEADLINE"
+          >
+            <summary>
+              Processamento em andamento, muitas tentativas ou versão da conta
+              alterada
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> aguarde o processamento em curso,
+                feche tentativas antigas e atualize Configurações. O SIGA impede
+                a troca enquanto uma operação usa a caixa ou quando outra troca
+                já foi confirmada.
+              </p>
+              <p>
+                No limite de tentativas abertas, aguarde dez minutos antes de
+                iniciar outra. Não force alterações no banco nem reenvie
+                mensagens para contornar o bloqueio. Se persistir sem atividade,
+                envie a referência ao suporte.
+              </p>
+            </div>
+          </details>
+          <details
+            id="erro-rede"
+            data-codes="GMAIL_OAUTH_NETWORK GMAIL_PROVIDER_UNAVAILABLE GMAIL_OAUTH_RESPONSE GMAIL_OAUTH_FAILED"
+          >
+            <summary>
+              Erro 500 do Google, falha de comunicação ou resposta inválida
+            </summary>
+            <div>
+              <p>
+                <strong>Primeiro, identifique onde o erro apareceu.</strong>
+                Página 500 do próprio Google, antes de voltar ao SIGA: aguarde e
+                recomece pelo SIGA, preferencialmente no navegador Chrome ou
+                Edge habitual. Mensagem dentro do SIGA, com referência: copie o
+                texto e a referência para análise.
+              </p>
+              <p>
+                Se a falha se repetir, não fique refazendo autorizações: o
+                administrador deve localizar a etapa no log. Em nossa
+                implantação, um erro inicialmente classificado como comunicação
+                era uma incompatibilidade no código do Worker, já corrigida. O
+                diagnóstico separou esse problema da Gmail API desativada.
+              </p>
+              <p>
+                <strong>Para suporte técnico:</strong> consultar
+                `GMAIL_OAUTH_FAILED` na auditoria pelo identificador da
+                referência, com etapa e categoria. Não registrar nem solicitar
+                corpo de resposta, código OAuth ou token.
+              </p>
+            </div>
+          </details>
+          <details
+            id="erro-protecao"
+            data-codes="GMAIL_OAUTH_PROTECTION GMAIL_OAUTH_STORAGE"
+          >
+            <summary>
+              Falha na proteção da tentativa ou ao salvar a conexão
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> administrador técnico, com a
+                referência do erro. Uma tentativa nova pode resolver estado
+                antigo; repetição exige análise da chave e do banco.
+              </p>
+              <p>
+                Não substitua <code>SECRET_ENCRYPTION_KEY</code>, apague tabelas
+                ou publique credenciais para tentar resolver. A chave protege
+                tokens já cifrados. A análise deve preservar a conexão anterior
+                e a auditoria.
+              </p>
+            </div>
+          </details>
+          <details id="erro-mfa" data-codes="MFA NoAuth">
+            <summary>
+              Cloudflare: “Nenhum método de autenticação configurado” ou
+              “NoAuth”
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong>
+                <a
+                  href="https://siga-emisiu1401.cloudflareaccess.com/AddMfaDevice"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >cadastro de MFA do Cloudflare Access</a
+                >. Entre com o e-mail autorizado e conclua o cadastro pessoal no
+                autenticador.
+              </p>
+              <p>
+                Se o portal não abrir, o administrador deve conferir o App
+                Launcher e a política do endereço exato. Nesta implantação foi
+                necessário habilitar o portal antes do primeiro cadastro. O QR
+                code, a chave do autenticador e os códigos são pessoais; não os
+                compartilhe.
+              </p>
+            </div>
+          </details>
+          <details id="erro-loop" data-codes="ERR_TOO_MANY_REDIRECTS">
+            <summary>
+              Cloudflare: “ERR_TOO_MANY_REDIRECTS” depois do MFA
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> primeiro abra diretamente o ambiente
+                privado em uma janela privativa. Se persistir, o administrador
+                confere o cookie da aplicação Access:
+                <code>SameSite=Lax</code> com <code>HttpOnly</code>, preservando
+                MFA, destino e allowlist.
+              </p>
+              <p>
+                Na implantação, o cookie Strict causou um loop e foi corrigido
+                para Lax. Não é necessário recadastrar o autenticador por causa
+                desse cookie nem desativar o segundo fator.
+              </p>
+            </div>
+          </details>
+          <details id="erro-marca" data-codes="branding propriedade">
+            <summary>
+              Google: “O site da página inicial não está registrado para você”
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> Google Search Console, com uma conta
+                proprietária/editora do projeto Google Cloud. Adicione a
+                propriedade de prefixo
+                <code>https://siga.emisiu1401.workers.dev/</code> e use o método
+                de verificação oferecido.
+              </p>
+              <p>
+                Nesta implantação, o arquivo fornecido pelo titular foi
+                publicado na raiz, com o nome exigido pelo Google, e a
+                propriedade e a marca foram confirmadas pelo titular. Mantenha o
+                arquivo de verificação publicado. Após verificar a propriedade,
+                o Google pediu aguardar 24 horas antes de reenviar a marca.
+              </p>
+              <p>
+                A aprovação da marca não é a habilitação da Gmail API nem
+                comprova aprovação de todas as permissões de dados. Uma troca de
+                caixa que mantém o mesmo projeto e os mesmos endereços
+                normalmente não exige refazer essa publicação.
+              </p>
+            </div>
+          </details>
+          <details
+            id="erro-envio"
+            data-codes="GMAIL_SIMULATION GMAIL_SEND PASSWORD_MAIL_SETUP"
+          >
+            <summary>
+              “Não envia e-mails”, “Retomar” desativado ou recuperação de senha
+              indisponível
+            </summary>
+            <div>
+              <p>
+                <strong>Onde agir:</strong> confira o
+                <a href="#diagnostico">diagnóstico atual</a> e as condições de
+                <a href="#pausa">retomada</a>. Conta conectada, operação real,
+                conexão retomada, permissão Google de envio e envio permitido na
+                implantação são condições diferentes.
+              </p>
+              <p>
+                Na fila, mensagens com <code>CONTA_ALTERADA</code> exigem
+                revisão após troca; mensagens com <code>EM_ENVIO</code> exigem
+                reconciliação antes de qualquer repetição. Não clique
+                repetidamente em enviar. Anexos e mensagens antigas não são
+                importados automaticamente para resolver pendências.
+              </p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section id="configuracao" aria-labelledby="config-title">
+        <h2 id="config-title">
+          5. Configuração inicial: o que precisa estar certo uma vez
+        </h2>
+        <ul class="checks">
+          <li>
+            <strong>Ambiente:</strong> trabalho real no
+            <code>siga-private</code>. O site <code>siga</code> é demonstração
+            pública, somente consulta e sem credenciais.
+          </li>
+          <li>
+            <strong>Projeto Google:</strong> cliente OAuth web e Gmail API
+            habilitada no mesmo projeto. Público-alvo, testadores e eventuais
+            políticas Workspace devem permitir a conta desejada.
+          </li>
+          <li>
+            <strong>Retorno OAuth:</strong> o endereço exato da seção de
+            <a href="#erro-retorno">retorno</a>, configurado no cliente Google e
+            no Worker privado.
+          </li>
+          <li>
+            <strong>Secrets em Produção:</strong> identificador/segredo Google
+            na Cloudflare; chave de criptografia preservada. As credenciais não
+            são valores para preencher em documentos públicos.
+          </li>
+          <li>
+            <strong>Permissões:</strong> leitura Gmail para coletar; envio
+            somente quando solicitado e autorizado. Marca verificada e acesso
+            aos dados são verificações distintas.
+          </li>
+          <li>
+            <strong>Publicações futuras:</strong> sincronize as configurações
+            remotas com a implantação sem sobrescrever Secrets ou voltar
+            parâmetros antigos. Uma publicação não deve reativar envio nem
+            desproteger o privado por acidente.
+          </li>
+        </ul>
+        <p>
+          <strong>Não refaça tudo para cada troca:</strong> confira apenas o
+          acesso da nova conta, a permissão de envio necessária, a autorização e
+          a revisão da fila. Reabra a configuração inicial se o projeto, o
+          cliente OAuth ou o endereço do aplicativo mudar.
+        </p>
+      </section>
+
+      <section id="acesso" aria-labelledby="acesso-title">
+        <h2 id="acesso-title">
+          6. Entrada no sistema e habilitação de usuários
+        </h2>
+        <p>
+          A entrada tem duas camadas:
+          <strong>Cloudflare Access com MFA</strong> e
+          <strong>usuário/senha individual do SIGA</strong>. Voltar à tela de
+          senha depois do Access é esperado; a identidade das duas camadas
+          precisa corresponder.
+        </p>
+        <p>
+          Troque sua senha pelo controle de sessão. Em
+          <strong>Esqueci minha senha</strong>, o link vai ao endereço
+          cadastrado e depende do Gmail de envio ativo. Trocar a caixa de
+          comunicações não altera o e-mail cadastrado dos usuários.
+        </p>
+        <ol>
+          <li>
+            O administrador cadastra a pessoa com endereço, seção e perfil em
+            Equipe/Usuários e acessos.
+          </li>
+          <li>
+            Habilita o acesso e entrega a senha temporária por canal restrito.
+          </li>
+          <li>
+            Autoriza o mesmo e-mail na aplicação Access, no App Launcher e no
+            Secret de allowlist do Worker privado. Cadastrar no SIGA não abre
+            essas políticas automaticamente.
+          </li>
+          <li>O usuário conclui seu próprio MFA e troca a senha temporária.</li>
+        </ol>
+        <p>
+          <strong>Perfis:</strong> Executor atua nas próprias atribuições;
+          Gestor faz triagem e decisões gerenciais; SDG consulta; ADMIN
+          administra acessos e configurações. O encerramento definitivo de
+          demandas continua exclusivo do titular.
+        </p>
+      </section>
+
+      <section id="operacao" aria-labelledby="operacao-title">
+        <h2 id="operacao-title">
+          7. O que acontece com novas mensagens e demandas
+        </h2>
+        <p>
+          <strong
+            >Sincronização → mensagens para revisão → decisão do gestor →
+            demanda provisória → atribuição → aceite e prazo.</strong
+          >
+        </p>
+        <p>
+          Na implementação atual, o coletor real registra entradas para revisão.
+          A IA não cria atribuições, aprova prazos, envia mensagens ou encerra
+          demandas por conta própria. O gestor confere identidade, conteúdo e
+          eventual relação com demanda existente antes de criar outra, evitando
+          duplicatas.
+        </p>
+        <p>
+          Mensagens suspeitas ficam em quarentena. Para aproveitar um pedido
+          legítimo, o gestor reescreve somente o conteúdo administrativo e
+          justifica a triagem; o original não é liberado automaticamente para a
+          IA.
+        </p>
+        <p>
+          Para atualização em lote, use Planilhas Excel: baixe o modelo,
+          preencha os campos permitidos e confira a prévia antes de confirmar. A
+          Trilha de auditoria permite conferir ações, horários e responsáveis.
+        </p>
+      </section>
+
+      <section id="suporte" aria-labelledby="suporte-title">
+        <h2 id="suporte-title">8. Se precisar de ajuda</h2>
+        <p>
+          Envie o texto do erro, a referência exibida pelo SIGA, o horário
+          aproximado e a etapa em que ocorreu. O botão de diagnóstico copia
+          somente estados técnicos, sem endereço de e-mail, tokens ou senhas.
+          Ele não envia nada automaticamente.
+        </p>
+        <p>
+          Não compartilhe a URL completa do callback Google, códigos de
+          autorização, segredo OAuth, tokens, QR codes de MFA ou capturas que os
+          mostrem. Os nomes dos campos e a referência do erro são suficientes
+          para começar a análise.
+        </p>
+        <h3>Referências oficiais</h3>
+        <ul>
+          <li>
+            <a
+              href="https://developers.google.com/workspace/gmail/api/quickstart/js#enable_the_api"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Google: habilitar a Gmail API</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://developers.google.com/identity/protocols/oauth2/web-server"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Google: OAuth para aplicações web</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Google: verificação de marca</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/independent-mfa/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Cloudflare: cadastro de MFA</a
+            >
+          </li>
+        </ul>
+      </section>
+    </main>
+    <footer>
+      Guia baseado na experiência de implantação do SIGA. As telas dos
+      fornecedores podem mudar; use as referências oficiais para conferir os
+      caminhos. <a href="/#settings">Voltar ao sistema</a>.
+    </footer>
+  </body>
+</html>

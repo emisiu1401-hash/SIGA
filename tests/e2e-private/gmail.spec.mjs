@@ -106,4 +106,12 @@ test("administrador conecta e troca caixas pelo Google sem mudar login nem exibi
     }
   }
   expect(errors).toEqual([]);
+  await page.locator("#gmail-oauth-feedback a").click();
+  await expect(page).toHaveURL(
+    /documentacao\.html\?erro=GMAIL_API_DISABLED#erros/,
+  );
+  await expect(page.locator("#erro-api")).toHaveAttribute("open", "");
+  await expect(page.locator("#diagnostic-summary")).toHaveText(
+    "Conexão Google concluída",
+  );
 });

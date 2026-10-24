@@ -1,0 +1,157 @@
+html {
+  scroll-padding-top: 24px;
+}
+.intro {
+  font-size: 18px;
+}
+.topics {
+  margin: 28px 0 40px;
+  padding: 16px 0;
+  border-block: 1px solid #c8d5c9;
+  gap: 4px 22px;
+}
+section {
+  scroll-margin-top: 24px;
+}
+section + section {
+  margin-top: 52px;
+  border-top: 1px solid #dce5dc;
+  padding-top: 6px;
+}
+button,
+input,
+textarea {
+  font: inherit;
+}
+button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #6b806e;
+  border-radius: 5px;
+  background: white;
+  color: #193b2e;
+  cursor: pointer;
+}
+button:hover {
+  background: #edf3e8;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #225c40;
+  outline-offset: 3px;
+}
+input,
+textarea {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #6b806e;
+  border-radius: 5px;
+  color: #193b2e;
+  background: white;
+}
+textarea {
+  resize: vertical;
+}
+label,
+.search-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.diagnostic-panel {
+  padding: 20px;
+  background: #f5f7f2;
+  border: 1px solid #dce5dc;
+  border-radius: 6px;
+}
+#diagnostic-summary {
+  margin-top: 0;
+  font-weight: 700;
+  font-size: 18px;
+}
+.diagnostic-panel dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+}
+.diagnostic-panel dt {
+  font-size: 13px;
+  color: #49634f;
+}
+.diagnostic-panel dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+.steps {
+  padding-left: 24px;
+}
+.steps li {
+  margin-bottom: 18px;
+  padding-left: 5px;
+}
+details {
+  border-bottom: 1px solid #c8d5c9;
+  padding: 8px 0;
+}
+summary {
+  min-height: 44px;
+  padding: 12px 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+details > div {
+  padding: 0 12px 12px 24px;
+}
+details[open] {
+  background: #f8faf6;
+}
+details[hidden],
+[hidden] {
+  display: none !important;
+}
+#help-count,
+#copy-status,
+#callback-copy-status {
+  font-size: 14px;
+}
+#oauth-callback {
+  display: block;
+  padding: 12px;
+  background: #edf3e8;
+}
+code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .intro {
+    font-size: 16px;
+  }
+  .diagnostic-panel {
+    padding: 16px;
+  }
+  .diagnostic-panel dl {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .actions {
+    gap: 10px;
+  }
+  .actions button {
+    width: 100%;
+  }
+  details > div {
+    padding-left: 12px;
+  }
+  .topics {
+    margin-top: 20px;
+  }
+}

@@ -71,3 +71,53 @@ test("páginas públicas OAuth: links, conteúdo, CSP, seis larguras e acessibil
   expect(requests.filter((url) => !url.startsWith(origin))).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test("documentação pública permanece consultiva, sem consultar configurações privadas", async ({
+  page,
+}) => {
+  // The local general server uses development mode; model the deployed demo session.
+  await page.route("**/api/session", (route) =>
+    route.fulfill({
+      json: {
+        deployment: "demo",
+        authenticated: false,
+        actor: { roles: ["SDG_LEITOR"] },
+        csrf: "",
+      },
+    }),
+  );
+  const requests = [],
+    errors = [];
+  page.on("request", (request) =>
+    requests.push({ url: request.url(), method: request.method() }),
+  );
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Documentação", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Documentação do SIGA", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("#diagnostic-summary")).toContainText(
+    "Demonstração pública",
+  );
+  await expect(page.locator("#diagnostic-copy")).toBeDisabled();
+  await expect(page.locator("#trocar-conta")).toContainText(
+    "não exige outro projeto",
+  );
+  const origin = new URL(page.url()).origin;
+  expect(
+    requests.some(
+      (request) => new URL(request.url).pathname === "/api/settings",
+    ),
+  ).toBe(false);
+  expect(
+    requests.filter(
+      (request) => request.method !== "GET" || !request.url.startsWith(origin),
+    ),
+  ).toEqual([]);
+  expect(await page.locator("main").innerText()).not.toMatch(
+    /[\w.+-]+@[\w.-]+\.[a-z]{2,}/i,
+  );
+  expect(errors).toEqual([]);
+});

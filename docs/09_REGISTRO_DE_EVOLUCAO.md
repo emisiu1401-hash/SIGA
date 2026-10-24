@@ -43,6 +43,14 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Documentação personalizada e diagnóstico operacional — 24/10/2026
+
+- Pedido: guia no sistema para repetir a configuração/troca da conta Google, com troubleshooting baseado na implantação. Titular informou conexão concluída; leitura de metadados do D1 confirmou uma conexão pausada, sem ler a caixa.
+- Entrega: `documentacao.html/css/js`, menu lateral, atalho em Configurações e tela de entrada; retornos OAuth abrem a orientação correspondente. Guia cobre troca, pausa/ativação, histórico/fila, Gmail API, testadores, callback, Secrets Produção/Prévias, MFA, cookies, marca, usuários e revisão humana de novas demandas.
+- Diagnóstico: consulta as APIs existentes com papel da sessão, sem ações de integração; relatório copiável por allowlist exclui dados pessoais/credenciais. Demonstração não consulta o privado; sessão inválida/perfil sem autorização continuam com texto do guia e sem configurações.
+- Validação: build, TypeScript, formato e 83 testes de aplicação passaram; oito fluxos privados passaram. Os nove cenários gerais existentes passaram; páginas públicas e novo cenário da documentação passaram em execução direcionada após adequar a fixture ao modo demo (servidor geral local usa desenvolvimento). Busca, atalhos, cópia/fallback, estados, perfis, ausência de ações/rede externa, seis larguras e axe cobertos. Browser plugin especializado ausente; usado Playwright/Chrome com fixtures locais. Nenhuma alteração de schema, conta, senha, envio ou modo das integrações.
+- Publicação: dois Workers com etag `879f7c3ed96a4a9ad327e3c837953011a52abb218bb4ffb5e4a0f2cc5862658e`. HTML/CSS/JS publicados conferidos com os arquivos locais; guia privado continua protegido por Access. Guia público exercitado em Chrome com solução por código aberta/focada, sem overflow, erro JS ou consulta de configurações privadas. Cinco Secrets privados, zero públicos, simulação/IA mock/envio desativado e arquivo Search Console preservados. Capturas locais e publicadas em `documentacao` no diretório externo de evidências.
+
 ### Correção da chamada HTTP OAuth no Cloudflare — 24/10/2026
 
 - Evidência: referência fornecida pelo titular localizada na auditoria com etapa `exchange`, classe `TypeError`, antes do limite de 15 segundos. O código usava `redirect: "error"`, rejeitado pelo workerd na construção da chamada. Incompatibilidade reproduzida localmente usando HTTP nativo do runtime, antes da resposta do provedor fictício.
