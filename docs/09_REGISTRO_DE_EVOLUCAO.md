@@ -43,6 +43,13 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Cookie Access e loop após MFA — 24/10/2026
+
+- Relato: usuário concluiu inscrição no Google Authenticator e recebeu ERR_TOO_MANY_REDIRECTS ao abrir SIGA.
+- Evidência: logs Access mostram logins autorizados repetidos em segundos para o aplicativo privado; configuração usava SameSite Strict. Documentação Cloudflare associa esse modo a ciclos de redirecionamento.
+- Correção autorizada de infraestrutura: SameSite alterado para Lax. Resposta da API confirmou HttpOnly, audiência, destino Worker, política e MFA obrigatório preservados. Sem alteração de senha, autenticadores, código do Worker, banco ou integrações.
+- Guia 19 atualizado com configuração e teste direto em sessão nova. Validação pessoal com e-mail/MFA não executada pelo agente; usuário precisa repetir entrada para confirmação ponta a ponta.
+
 ### Desbloqueio do cadastro de MFA — 24/10/2026
 
 - Problema relatado: primeiro login parado na tela Cloudflare Access sem método MFA cadastrado.

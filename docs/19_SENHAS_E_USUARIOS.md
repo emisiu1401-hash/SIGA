@@ -12,6 +12,14 @@ O portal **App Launcher** precisa estar habilitado e permitir o mesmo e-mail. Em
 
 Se o navegador continuar na página antiga, reabra o link de cadastro em uma aba nova ou janela privativa. A inscrição e a verificação do dispositivo pessoal precisam ser concluídas pelo próprio usuário. [Procedimento oficial](https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/independent-mfa/#enroll-authenticators).
 
+## Erro de redirecionamentos após o MFA
+
+O cookie da aplicação Cloudflare Access deve usar `SameSite=Lax`, mantendo `HttpOnly=true`. A Cloudflare alerta que `SameSite=Strict` pode provocar `ERR_TOO_MANY_REDIRECTS` no retorno da autenticação entre domínios. O SIGA mantém verificação de origem/CSRF nas operações, validação do JWT Access e senha individual; MFA e allowlist continuam obrigatórios. [Referência oficial](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/#samesite-attribute).
+
+Em 24/10/2026, após relato de loop ao abrir SIGA pelo portal, o diagnóstico encontrou logins autorizados repetidos em segundos e a aplicação configurada com cookie Strict. Foi alterado somente o atributo para Lax, preservando audiência, destino Worker, política de usuários e exigência de MFA. A inscrição de autenticador não foi apagada. Para testar sem cookies anteriores, abra o [SIGA privado diretamente](https://siga-private.emisiu1401.workers.dev/login) em janela anônima/privativa, confirme e-mail e MFA quando solicitado e informe a senha individual. Não é necessário recadastrar o Google Authenticator.
+
+A leitura de configuração confirma a alteração; a prova final do fluxo com o dispositivo pessoal depende do usuário. Não confundir essa conferência com login pessoal concluído pelo agente.
+
 ## Trocar e recuperar senha
 
 - **Alterar minha senha**, junto aos controles de sessão: informe a atual e a nova senha, confirmando-a. A aplicação encerra todas as sessões dessa conta; entre novamente.
