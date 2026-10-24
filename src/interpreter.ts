@@ -173,7 +173,8 @@ export async function interpret(
     "Configure AI_API_KEY como Secret no Worker.",
     503,
   );
-  // Fixed provider endpoint prevents secrets being forwarded to an arbitrary URL.
+  // Fixed endpoint and manual redirects keep the key at the configured provider.
+  // Reject non-2xx below: workerd does not implement redirect: "error".
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -197,7 +198,7 @@ export async function interpret(
       ],
     }),
     signal: AbortSignal.timeout(20000),
-    redirect: "error",
+    redirect: "manual",
   });
   assert(
     response.ok,

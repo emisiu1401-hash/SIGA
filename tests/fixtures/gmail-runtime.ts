@@ -3,7 +3,15 @@ import {
   startGmailOAuth,
   finishGmailOAuth,
   gmailAccountStatus,
+  activateGmailAccount,
+  configuredGmail,
 } from "../../src/gmailAccounts.ts";
+import {
+  dispatchMail,
+  synchronizeGmail,
+  sendSecurityMail,
+} from "../../src/gmail.ts";
+import { interpret } from "../../src/interpreter.ts";
 import { Repository } from "../../src/repository.ts";
 import { seedDirectory } from "../../src/seed.ts";
 
@@ -23,34 +31,68 @@ export default {
       OUTBOX_MAILBOX_ID: "mock-mailbox",
     };
     const mode = new URL(request.url).searchParams.get("mode");
-    globalThis.fetch = async (url) => {
-      if (mode === "network")
-        throw new TypeError("private-provider-description");
-      if (String(url).endsWith("/token"))
-        return Response.json({
-          access_token: "test-access",
-          refresh_token: "test-refresh-only-fixture",
-          scope: "https://www.googleapis.com/auth/gmail.readonly",
-        });
-      if (String(url).endsWith("/profile"))
-        return mode === "disabled"
-          ? Response.json(
-              { error: { details: [{ reason: "SERVICE_DISABLED" }] } },
-              { status: 403 },
-            )
-          : Response.json({
-              emailAddress: "sender@example.test",
-              historyId: "100",
-            });
-      throw new Error("Unexpected test endpoint");
-    };
+    // Keep native fetch intact. Miniflare intercepts outbound HTTP after workerd
+    // has validated RequestInit, so unsupported options cannot be hidden by a mock.
     try {
+      if (
+        [
+          "pipeline",
+          "refresh-redirect",
+          "send-redirect",
+          "ai-redirect",
+        ].includes(mode || "")
+      ) {
+        const status = await gmailAccountStatus(repo, env);
+        await activateGmailAccount(
+          repo,
+          { ...env, SIMULATION_MODE: "false" },
+          "u-admin",
+          { connectionId: status.connectionId, version: status.version },
+        );
+        const effective = await configuredGmail(repo, {
+          ...env,
+          SIMULATION_MODE: "false",
+          EMAIL_SEND_ENABLED: "true",
+        });
+        const sync = await synchronizeGmail(repo, effective);
+        const id = crypto.randomUUID();
+        await db
+          .prepare(
+            "INSERT INTO outbound_messages(id,mailbox_id,recipient_email,subject,body_text,status,dedupe_key,created_at) VALUES(?,?,'recipient@example.com','Synthetic test','Synthetic body','PENDENTE',?,?)",
+          )
+          .bind(id, effective.OUTBOX_MAILBOX_ID, id, new Date().toISOString())
+          .run();
+        const dispatch = await dispatchMail(repo, effective);
+        await sendSecurityMail(
+          effective,
+          "recipient@example.com",
+          "Synthetic recovery",
+          "Synthetic body",
+          AbortSignal.timeout(15000),
+        );
+        const proposal = await interpret(
+          "Solicito vistoria.",
+          null,
+          "2026-10-24",
+          {
+            AI_PROVIDER: "openai",
+            AI_API_KEY: "fixture-api-key",
+            AI_MODEL: "fixture-model",
+            SIMULATION_MODE: "false",
+          },
+        );
+        return Response.json({
+          imported: sync.imported,
+          sent: dispatch.sent,
+          review: proposal.requires_human_review,
+        });
+      }
       const p = await startGmailOAuth(
         new Request("https://test.invalid/api/settings/gmail/connect"),
         env,
         repo,
         "u-admin",
-        { email: "sender@example.test" },
+        { email: "sender@example.test", allowSend: true },
       );
       const state = new URL(p.authorizationUrl).searchParams.get("state");
       await finishGmailOAuth(

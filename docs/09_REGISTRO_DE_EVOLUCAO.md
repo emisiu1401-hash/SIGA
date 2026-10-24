@@ -43,6 +43,15 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Correção da chamada HTTP OAuth no Cloudflare — 24/10/2026
+
+- Evidência: referência fornecida pelo titular localizada na auditoria com etapa `exchange`, classe `TypeError`, antes do limite de 15 segundos. O código usava `redirect: "error"`, rejeitado pelo workerd na construção da chamada. Incompatibilidade reproduzida localmente usando HTTP nativo do runtime, antes da resposta do provedor fictício.
+- Correção: nove chamadas em `gmailAccounts.ts`, `gmail.ts` e `interpreter.ts` usam `redirect: "manual"`; validações existentes rejeitam respostas não-2xx. Portanto, redirecionamentos continuam bloqueados, sem encaminhar credenciais para o destino recebido em Location. Inclui autorização, renovação, perfil, sincronização, envio, recuperação de senha e IA.
+- Lacuna de teste corrigida: removido o mock de `globalThis.fetch` do Worker de teste. As respostas são interceptadas pelo serviço de saída do Miniflare depois da validação HTTP nativa, sem rede externa. O teste falhou com a versão anterior (503 em vez de 200) e passou após a mudança.
+- Cobertura: primeira conexão, reconexão, Gmail API desativada, indisponibilidade, renovação, sincronização, envio/recuperação e IA fictícios; 3xx em token, perfil, renovação, envio e IA são rejeitados sem visitar o destino arbitrário. Mantidos PKCE/state/sessão/criptografia/RBAC e políticas de revisão humana.
+- Verificação: build, TypeScript, formato, 83 testes de aplicação e seis fluxos privados de navegador passaram. Nenhuma alteração de schema, credenciais, dados institucionais ou ativação das integrações; nenhum e-mail real ou IA paga usados.
+- Publicação: dois Workers atualizados com etag `173c5992d555b3c88746a3e1f01a5d61096f41b0a52b7706721b7ef1c2076bf7`. Configuração remota preservada; cinco Secrets privados e zero públicos, Access/senha, simulação, envio desativado e IA mock conferidos. Arquivo Search Console continua idêntico/HTTP 200; página/API/callback privados redirecionam ao Access sem identidade. Conclusão OAuth pessoal permanece necessária para confirmar a caixa real.
+
 ### Arquivo de propriedade Google Search Console — 24/10/2026
 
 - Pedido: publicar o HTML fornecido pelo titular na raiz do site público. Nome original do download com sufixo local `(1)`; publicado como `google7a0e37e960389c87.html`, conforme o identificador dentro do arquivo.

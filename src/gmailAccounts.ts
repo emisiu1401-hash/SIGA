@@ -405,6 +405,8 @@ export async function finishGmailOAuth(
       env.SECRET_ENCRYPTION_KEY!,
     );
     stage = "exchange";
+    // workerd rejects redirect: "error". Manual keeps credentials at this endpoint;
+    // checkGoogleResponse rejects every non-2xx response, including redirects.
     const exchange = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -416,7 +418,7 @@ export async function finishGmailOAuth(
         redirect_uri: uri,
         code_verifier: verifier,
       }),
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(15000),
     });
     await checkGoogleResponse(exchange);
@@ -455,7 +457,7 @@ export async function finishGmailOAuth(
       "https://gmail.googleapis.com/gmail/v1/users/me/profile",
       {
         headers: { Authorization: "Bearer " + tokens.access_token },
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(15000),
       },
     );

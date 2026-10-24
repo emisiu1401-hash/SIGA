@@ -56,6 +56,7 @@ async function accessToken(
     "Configure OAuth do Gmail nos Secrets do Worker.",
     503,
   );
+  // Native Workers fetch supports manual redirects; every caller rejects non-2xx.
   const r = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -66,7 +67,7 @@ async function accessToken(
       grant_type: "refresh_token",
     }),
     signal,
-    redirect: "error",
+    redirect: "manual",
   });
   assert(r.ok, "GMAIL_AUTH", "Autorização Gmail indisponível.", 503);
   const body = (await boundedJson(r)) as { access_token: string };
@@ -106,7 +107,7 @@ export async function synchronizeGmail(repo: Repository, env: RuntimeEnv) {
           {
             headers: { Authorization: "Bearer " + token },
             signal: operation.signal(),
-            redirect: "error",
+            redirect: "manual",
           },
         );
         return r;
@@ -412,7 +413,7 @@ export async function sendSecurityMail(
     {
       headers: { Authorization: "Bearer " + token },
       signal,
-      redirect: "error",
+      redirect: "manual",
     },
   );
   assert(profile.ok, "GMAIL_PROFILE", "Falha na comunicação Gmail.", 503);
@@ -435,7 +436,7 @@ export async function sendSecurityMail(
         raw: rawMail(env.MAILBOX_ID, to, subject, body, crypto.randomUUID()),
       }),
       signal,
-      redirect: "error",
+      redirect: "manual",
     },
   );
   assert(
@@ -458,7 +459,7 @@ export async function dispatchMail(repo: Repository, env: RuntimeEnv) {
       "https://gmail.googleapis.com/gmail/v1/users/me/profile",
       {
         headers: { Authorization: "Bearer " + token },
-        redirect: "error",
+        redirect: "manual",
         signal: operation.signal(),
       },
     );
@@ -522,7 +523,7 @@ export async function dispatchMail(repo: Repository, env: RuntimeEnv) {
               row.id,
             ),
           }),
-          redirect: "error",
+          redirect: "manual",
           signal: operation.signal(),
         },
       );
