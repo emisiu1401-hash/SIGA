@@ -43,6 +43,13 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Arquivo de propriedade Google Search Console — 24/10/2026
+
+- Pedido: publicar o HTML fornecido pelo titular na raiz do site público. Nome original do download com sufixo local `(1)`; publicado como `google7a0e37e960389c87.html`, conforme o identificador dentro do arquivo.
+- Arquivo copiado sem alteração de bytes para `public/`; exceção explícita em `.prettierignore` preserva o conteúdo recebido. Marcador público de verificação de site, sem credenciais OAuth.
+- Publicação somente no Worker de demonstração, preservando configurações remotas. HTTP 200 sem redirecionamento/autenticação; 53 bytes idênticos ao original (SHA-256 `46f87d8cdae86c705846e6f089d2c9d8eafd3a1c2d3b8dd66ecbc72887710d69`). Build e formato passaram. Sem alteração de autenticação, banco ou integrações; nenhuma suíte nova para este arquivo estático.
+- Próximo passo humano: clicar em Verificar no Search Console; após confirmação, aguardar as 24 horas pedidas pelo Google antes de reenviar a marca. Publicar o arquivo não equivale a aprovação da marca ou dos escopos OAuth.
+
 ### Diagnóstico seguro do retorno OAuth Gmail — 24/10/2026
 
 - Relato: uma tentativa completou o consentimento e falhou dentro do SIGA; outra exibiu erro 500 do próprio Google. Auditoria confirmou callbacks com `GMAIL_OAUTH_FAILED`, antes sem etapa ou classe. Sem logs históricos adicionais, a causa original permanece indeterminada; não atribuída por presunção a indisponibilidade Google.

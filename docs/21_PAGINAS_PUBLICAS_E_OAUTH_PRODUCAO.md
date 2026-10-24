@@ -22,6 +22,8 @@ Ao migrar os endereços, atualizar páginas, links do produto, Secrets/variávei
 
 ## Validação
 
+Em 24/10/2026, o titular forneceu o arquivo de verificação Search Console para publicação em `https://siga.emisiu1401.workers.dev/google7a0e37e960389c87.html`. O sufixo `(1)` do download foi removido do nome, mantendo o conteúdo original. O arquivo deve permanecer publicado para futuras verificações. A confirmação da propriedade na conta Google e a análise de marca/domínios/escopos continuam externas; não declarar aprovação com base apenas no HTTP 200 do arquivo.
+
 Navegação entre as páginas, HTTP 200/Content-Type/CSP, links internos, conteúdo declarado, ausência de requisições externas, seis larguras (360/390/768/1024/1366/1920) e axe exercitados em teste local de navegador. Suítes geral e privada verificam também regressões no painel, login e demais fluxos. Fontes normativas não equivalem a certificado de conformidade.
 
 Referências: [OAuth 2.0 Policies](https://developers.google.com/identity/protocols/oauth2/policies), [verificação de escopos restritos](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification), [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy).
