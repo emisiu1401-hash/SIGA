@@ -24,7 +24,28 @@ import {
   configuredAi,
 } from "./interpreter.ts";
 import { synchronizeGmail, dispatchMail } from "./gmail.ts";
+import {
+  gmailAccountStatus,
+  gmailOutboxId,
+  configuredGmail,
+  startGmailOAuth,
+  finishGmailOAuth,
+  activateGmailAccount,
+} from "./gmailAccounts.ts";
 import type { Command, Person, RuntimeEnv } from "./types.ts";
+import {
+  auditStatement,
+  recordAudit,
+  auditEntries,
+  exportAudit,
+  type RequestAudit,
+} from "./audit.ts";
+import {
+  exportSpreadsheet,
+  previewSpreadsheet,
+  applySpreadsheet,
+  type SheetKind,
+} from "./spreadsheets.ts";
 import {
   deploymentGuard,
   deploymentDatabaseGuard,
@@ -61,11 +82,16 @@ function secured(response: Response) {
   headers.set("Cache-Control", "no-store");
   return new Response(response.body, { status: response.status, headers });
 }
-export async function fetchHandler(request: Request, env: RuntimeEnv) {
+async function handleRequest(
+  request: Request,
+  env: RuntimeEnv,
+  trace: RequestAudit,
+) {
   const repo = new Repository(
     env.DB,
     env.SIMULATION_MODE === "true",
     env.OUTBOX_MAILBOX_ID,
+    trace.requestId,
   );
   const url = new URL(request.url);
   const path = url.pathname;
@@ -81,6 +107,7 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
     );
     const access = await privateAccess(request, env);
     await deploymentDatabaseGuard(repo, env);
+    trace.databaseReady = true;
     if (
       env.DEPLOYMENT_MODE === "demo" &&
       !["GET", "HEAD"].includes(request.method)
@@ -95,9 +122,14 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
       const asset = __ASSETS__[path === "/" ? "/index.html" : path];
       return secured(
         asset
-          ? new Response(asset.body, {
-              headers: { "Content-Type": asset.type },
-            })
+          ? new Response(
+              asset.binary
+                ? Uint8Array.from(atob(asset.body), (c) => c.charCodeAt(0))
+                : asset.body,
+              {
+                headers: { "Content-Type": asset.type },
+              },
+            )
           : new Response("Página não encontrada", { status: 404 }),
       );
     }
@@ -147,6 +179,64 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
     }
     const current = await session(request, env, repo, access);
     const actor = current.actor;
+    if (current.authenticated) trace.actor = actor;
+    if (
+      current.authenticated &&
+      ((request.method !== "GET" && request.method !== "HEAD") ||
+        path === "/api/gmail/oauth/callback")
+    ) {
+      await recordAudit(repo.db, {
+        actor,
+        requestId: trace.requestId,
+        action: "REQUEST_STARTED",
+        resource: path,
+        source: "HTTP",
+        details: { method: request.method },
+      });
+      trace.started = true;
+    }
+    if (env.DEPLOYMENT_MODE !== "demo") {
+      repo.outboxMailboxId =
+        (await gmailOutboxId(repo, env)) || repo.outboxMailboxId;
+      env = { ...env, OUTBOX_MAILBOX_ID: repo.outboxMailboxId };
+    }
+    if (path === "/api/gmail/oauth/callback" && request.method === "GET") {
+      assert(
+        actor.roles.includes("ADMIN") && env.DEPLOYMENT_MODE !== "demo",
+        "FORBIDDEN",
+        "Conexão restrita ao administrador.",
+        403,
+      );
+      let destination = "/?gmail=connected#settings";
+      try {
+        await finishGmailOAuth(request, env, repo, actor.id);
+      } catch (error) {
+        trace.errorCode =
+          error instanceof DomainError ? error.code : "GMAIL_OAUTH_FAILED";
+        const allowed = [
+          "MAILBOX_MISMATCH",
+          "GMAIL_OAUTH_SCOPES",
+          "GMAIL_OAUTH_REFRESH",
+          "GMAIL_OAUTH_STATE",
+          "GMAIL_OAUTH_CANCELLED",
+          "GMAIL_BUSY",
+        ];
+        const reason =
+          error instanceof DomainError && allowed.includes(error.code)
+            ? error.code
+            : "GMAIL_OAUTH_FAILED";
+        destination = "/?gmail=error&reason=" + reason + "#settings";
+      }
+      return secured(
+        new Response(null, {
+          status: 303,
+          headers: {
+            Location: url.origin + destination,
+            "Set-Cookie": `siga_google_state=; HttpOnly; SameSite=Lax; Path=/api/gmail/oauth/callback; Max-Age=0${url.protocol === "https:" ? "; Secure" : ""}`,
+          },
+        }),
+      );
+    }
     if (request.method !== "GET" && request.method !== "HEAD") {
       assert(
         current.authenticated && !actor.roles.includes("SDG_LEITOR"),
@@ -250,7 +340,7 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
           reviews: (
             await repo.db
               .prepare(
-                "SELECT * FROM ingestion_reviews r WHERE NOT EXISTS(SELECT 1 FROM siga_commands c WHERE c.id='review:'||r.id) ORDER BY created_at DESC LIMIT 50",
+                "SELECT r.*,m.account_ref mailbox_email FROM ingestion_reviews r LEFT JOIN mailbox_accounts m ON m.id=r.mailbox_id WHERE NOT EXISTS(SELECT 1 FROM siga_commands c WHERE c.id='review:'||r.id) ORDER BY r.created_at DESC LIMIT 50",
               )
               .all()
           ).results,
@@ -330,6 +420,87 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
         }),
       );
     }
+    if (
+      ["/api/audit/log", "/api/audit/export"].includes(path) &&
+      request.method === "GET"
+    ) {
+      assert(
+        actor.roles.includes("ADMIN") || actor.roles.includes("GESTOR"),
+        "FORBIDDEN",
+        "Auditoria restrita.",
+        403,
+      );
+      return secured(
+        path.endsWith("export")
+          ? await exportAudit(repo.db, url.searchParams)
+          : json(await auditEntries(repo.db, url.searchParams)),
+      );
+    }
+    if (path === "/api/spreadsheets/export" && request.method === "GET")
+      return secured(
+        await exportSpreadsheet(
+          repo,
+          actor,
+          url.searchParams.get("kind") as SheetKind,
+        ),
+      );
+    if (path === "/api/spreadsheets/preview" && request.method === "POST") {
+      assert(
+        request.headers.get("Content-Type")?.split(";")[0] ===
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "CONTENT_TYPE",
+        "Envie um arquivo .xlsx.",
+        415,
+      );
+      const reader = request.body?.getReader();
+      assert(reader, "SHEET_EMPTY", "Arquivo vazio.");
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.length;
+          assert(
+            size <= 5_000_000,
+            "SHEET_SIZE",
+            "Arquivo maior que 5 MB.",
+            413,
+          );
+          chunks.push(value);
+        }
+      } finally {
+        await reader.cancel();
+      }
+      const bytes = new Uint8Array(size);
+      let offset = 0;
+      for (const c of chunks) {
+        bytes.set(c, offset);
+        offset += c.length;
+      }
+      return secured(
+        json(
+          await previewSpreadsheet(
+            repo,
+            env,
+            actor,
+            url.searchParams.get("kind") as SheetKind,
+            bytes,
+          ),
+        ),
+      );
+    }
+    if (path === "/api/spreadsheets/apply" && request.method === "POST") {
+      const input = await body(request);
+      assert(
+        typeof input.previewId === "string",
+        "IMPORT_PREVIEW",
+        "Valide a planilha primeiro.",
+      );
+      return secured(
+        json(await applySpreadsheet(repo, env, actor, input.previewId)),
+      );
+    }
     if (path === "/api/settings" && request.method === "GET") {
       assert(
         actor.roles.includes("ADMIN") || actor.roles.includes("GESTOR"),
@@ -340,19 +511,20 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
       const saved = await repo.db
         .prepare("SELECT value_json FROM app_settings WHERE key='ai_api_key'")
         .first();
+      const gmail = await gmailAccountStatus(repo, env);
       return secured(
         json({
           simulation: env.SIMULATION_MODE === "true",
           aiProvider: env.AI_PROVIDER,
           aiModel: env.AI_MODEL,
           aiConfigured: !!env.AI_API_KEY || !!saved,
-          gmailConfigured: !!(
-            env.GOOGLE_CLIENT_ID &&
-            env.GOOGLE_CLIENT_SECRET &&
-            env.GOOGLE_REFRESH_TOKEN &&
-            env.MAILBOX_ID
-          ),
-          sendEnabled: env.EMAIL_SEND_ENABLED === "true",
+          gmailConfigured: gmail.connected,
+          gmail,
+          sendEnabled:
+            gmail.connected &&
+            env.SIMULATION_MODE !== "true" &&
+            env.EMAIL_SEND_ENABLED === "true" &&
+            (!gmail.connectionId || (!gmail.paused && gmail.sendAuthorized)),
           seiHosts: env.SEI_ALLOWED_HOSTS.split(","),
           cloudflare: true,
           privateEnvironment: env.DEPLOYMENT_MODE === "private",
@@ -360,6 +532,45 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
             ? "cloudflare-secret"
             : "encrypted-database",
         }),
+      );
+    }
+    if (path === "/api/settings/gmail/connect" && request.method === "POST") {
+      assert(
+        actor.roles.includes("ADMIN"),
+        "FORBIDDEN",
+        "Conexão restrita ao administrador.",
+        403,
+      );
+      const result = await startGmailOAuth(
+        request,
+        env,
+        repo,
+        actor.id,
+        await body(request),
+      );
+      return secured(
+        new Response(
+          JSON.stringify({ authorizationUrl: result.authorizationUrl }),
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "Set-Cookie": result.cookie,
+            },
+          },
+        ),
+      );
+    }
+    if (path === "/api/settings/gmail/activate" && request.method === "POST") {
+      assert(
+        actor.roles.includes("ADMIN"),
+        "FORBIDDEN",
+        "Ativação restrita ao administrador.",
+        403,
+      );
+      return secured(
+        json(
+          await activateGmailAccount(repo, env, actor.id, await body(request)),
+        ),
       );
     }
     if (path === "/api/settings/ai" && request.method === "POST") {
@@ -388,17 +599,24 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
         input.token,
         env.SECRET_ENCRYPTION_KEY,
       );
-      await repo.db
+      const updateSecret = repo.db
         .prepare(
           "INSERT INTO app_settings(key,value_json,updated_at) VALUES('ai_api_key',?,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at",
         )
-        .bind(JSON.stringify({ encrypted, keyVersion: 2 }), now)
-        .run();
-      await repo.audit(
-        actor.id,
-        "AI_SECRET_UPDATED",
-        "Token de IA atualizado com criptografia AES-GCM.",
-      );
+        .bind(JSON.stringify({ encrypted, keyVersion: 2 }), now);
+      await repo.db.batch([
+        updateSecret,
+        auditStatement(repo.db, {
+          actor,
+          requestId: repo.requestId,
+          action: "AI_SECRET_UPDATED",
+          source: "SECURITY",
+          at: now,
+          details: {
+            message: "Credencial atualizada com AES-GCM; valor omitido.",
+          },
+        }),
+      ]);
       return secured(
         json({
           saved: true,
@@ -414,7 +632,9 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
         "Sincronização restrita ao administrador.",
         403,
       );
-      return secured(json(await synchronizeGmail(repo, env)));
+      return secured(
+        json(await synchronizeGmail(repo, await configuredGmail(repo, env))),
+      );
     }
     if (path === "/api/interpret" && request.method === "POST") {
       assert(
@@ -699,6 +919,8 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
       json({ error: "NOT_FOUND", message: "Rota não encontrada." }, 404),
     );
   } catch (error) {
+    trace.errorCode =
+      error instanceof DomainError ? error.code : "REQUEST_FAILED";
     const known = error instanceof DomainError;
     let status = known ? error.status : 500;
     let message = known
@@ -710,7 +932,7 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
       message =
         "Conflito de versão ou registro duplicado. Recarregue os dados.";
     }
-    if (status === 403 && env.DEPLOYMENT_MODE !== "demo")
+    if (status === 403 && trace.databaseReady && env.DEPLOYMENT_MODE !== "demo")
       try {
         await repo.audit(null, "ACCESS_DENIED", `${request.method} ${path}`);
       } catch {}
@@ -729,6 +951,45 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
     );
   }
 }
+export async function fetchHandler(request: Request, env: RuntimeEnv) {
+  const trace: RequestAudit = { requestId: crypto.randomUUID() },
+    start = performance.now();
+  const response = await handleRequest(request, env, trace),
+    path = new URL(request.url).pathname;
+  if (
+    trace.databaseReady &&
+    env.DEPLOYMENT_MODE !== "demo" &&
+    path.startsWith("/api/") &&
+    (trace.started ||
+      response.status >= 400 ||
+      /\/(export|settings|logout|login|sync)(\/|$)/.test(path))
+  ) {
+    try {
+      await recordAudit(env.DB, {
+        actor: trace.actor,
+        requestId: trace.requestId,
+        action: "HTTP_" + request.method,
+        resource: path,
+        source: "HTTP",
+        outcome:
+          trace.errorCode || response.status >= 400 ? "NEGADO" : "SUCESSO",
+        status: response.status,
+        duration: performance.now() - start,
+        details: { errorCode: trace.errorCode || null },
+      });
+    } catch {
+      console.error(
+        JSON.stringify({
+          event: "audit_write_failed",
+          requestId: trace.requestId,
+        }),
+      );
+      response.headers.set("X-SIGA-Audit-Degraded", "true");
+    }
+  }
+  response.headers.set("X-Request-ID", trace.requestId);
+  return response;
+}
 export async function scheduledHandler(
   _controller: ScheduledController,
   env: RuntimeEnv,
@@ -741,6 +1002,8 @@ export async function scheduledHandler(
     env.OUTBOX_MAILBOX_ID,
   );
   await deploymentDatabaseGuard(repo, env);
+  repo.outboxMailboxId =
+    (await gmailOutboxId(repo, env)) || repo.outboxMailboxId;
   const people = await repo.people();
   const system = people.find((p) => p.id === "system")!;
   const now = new Date().toISOString();
@@ -780,9 +1043,12 @@ export async function scheduledHandler(
       }
     }
   }
-  if (env.SIMULATION_MODE !== "true" && env.GOOGLE_REFRESH_TOKEN) {
-    await synchronizeGmail(repo, env);
-    await dispatchMail(repo, env);
+  if (env.SIMULATION_MODE !== "true") {
+    const effective = await configuredGmail(repo, env);
+    if (effective.GOOGLE_REFRESH_TOKEN) {
+      await synchronizeGmail(repo, effective);
+      await dispatchMail(repo, effective);
+    }
   }
 }
 export default {

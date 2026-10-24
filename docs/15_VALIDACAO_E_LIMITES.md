@@ -1,5 +1,15 @@
 # Validação executada — 24/10/2026
 
+## Complemento mais recente: conta Gmail, planilhas e log
+
+62 testes Node/SQLite e 12 cenários de navegador locais passaram (9 gerais + 3 privados). Incluem troca entre contas Google fictícias, verificação de perfil/escopos/state/PKCE, cursores e filas separados, 100 cadastros por transação, conflitos/rollback/idempotência, template artifact-tool comprimido lido pelo parser de produção, arquivos hostis e log imutável/redigido com arquivo JSONL/hash conferido. Fluxo de arquivo no navegador valida o download escrito, a prévia sem mudança, a confirmação, a persistência no diretório e a auditoria com ator e correlação. Telas Planilhas/Auditoria foram verificadas nas seis larguras obrigatórias e com axe. Build/TypeScript/Prettier, três validadores Python, auditoria de dependências e dry-run Wrangler passaram.
+
+Backup privado anterior a 0005/0006 restaurado em SQLite isolado: integrity_check ok, zero violações FK, zero demandas; DPAPI com roundtrip. As migrations foram aplicadas aos dois bancos e conferidas. Detalhes operacionais em [17_TROCA_DE_CONTA_GMAIL.md](17_TROCA_DE_CONTA_GMAIL.md) e [18_PLANILHAS_E_LOG.md](18_PLANILHAS_E_LOG.md).
+
+O template comprimido também foi aberto no runtime `workerd` local via Wrangler, retornando as sete colunas de Pessoas com HTTP 200. Na publicação, o template baixado foi comparado byte a byte com o arquivo entregue; a demonstração rejeitou gravação e leitura de log administrativo (403), enquanto HTML/API privados redirecionaram para Cloudflare Access (302). Testes autenticados de mutação permanecem locais, sem inserir dados de ensaio no banco privado publicado.
+
+Esta etapa usa testes de segurança direcionados e revisão de código; não foi aberto novo scan Codex Security selado. O relatório antigo abaixo mantém seu escopo e snapshot. Integração Google real ainda exige cliente OAuth e consentimento pessoal; envio/leitura reais e IA paga não foram executados. Testes automatizados de usabilidade não certificam WCAG nem equivalem a homologação institucional.
+
 | Verificação | Evidência e alcance |
 |---|---|
 | Build e TypeScript estrito | Passaram; Worker com assets locais embutidos e dry-run Wrangler |

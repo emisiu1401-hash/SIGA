@@ -43,6 +43,17 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Troca Gmail, Excel e log — 24/10/2026
+
+- Resultado: conta de comunicação configurável em Configurações, independente do login; troca OAuth com PKCE/state, perfil validado, pausa, filas retidas e deduplicação por caixa. Sem cliente Google configurado, o formulário explica a pendência e não inicia autorização incompleta.
+- Excel: template `.xlsx` com Demandas/Pessoas/Instruções; exportação atual; upload binário limitado; validação ZIP/XML, colunas, tipos, duplicatas, versões, RBAC e SEI; prévia sem mutação; confirmação atômica/idempotente, até 100 mudanças. Responsável, prazo e encerramento mantêm os fluxos específicos.
+- Auditoria: migration 0006, log append-only D1 com UTC, ator/papéis, ação/recurso, origem/resultado, correlação, status/duração HTTP; eventos transacionais de domínio, cadastro, Gmail, token e planilha. Consulta paginada e arquivo JSONL com metadados/hash. Sem corpos de e-mail ou credenciais; históricos legados preservados.
+- Arquivos: migrations 0005/0006, `src/gmailAccounts.ts`, `src/xlsx.ts`, `src/spreadsheets.ts`, `src/audit.ts`, domínio/repositório/Worker/Gmail, UI/build, template público vazio e guias 17/18. Template autorado com artifact-tool, três abas renderizadas e arquivo reaberto pelo parser de produção.
+- Verificação: 62 testes Node/SQLite passaram; 9 cenários gerais de navegador e 3 fluxos privados (incluindo Gmail fictício, arquivo Excel/downloads/log real de teste) passaram; seis larguras, axe e erros de página; TypeScript, Prettier, validadores Python e dry-run Wrangler. Dependências de produção sem vulnerabilidades conhecidas no `pnpm audit --prod`.
+- Segurança exercitada: OAuth cancelado/trocado/expirado/escopo incorreto, concorrência entre contas, leitura/envio somente da caixa ativa, AES-GCM, CSRF/RBAC, fórmulas/macros/XXE/ZIP corrompido/expansão excessiva, rollback integral e imutabilidade/redação do log. Isto não substitui pentest institucional nem novo relatório Codex Security selado.
+- Backup antes da migração: export privado restaurado em SQLite em memória, integridade `ok`, zero erros FK e zero demandas; cópia local DPAPI e roundtrip verificados. Migrations 0005/0006 aplicadas aos dois D1, com seis versões registradas e marcadores de ambiente preservados.
+- Implantação autorizada: os dois ambientes permanecem separados, demo somente leitura e privado com Access. Integrações reais seguem desligadas; sem leitura/envio de e-mail, IA paga ou dados institucionais. Cliente OAuth Google, primeiro login pessoal/MFA, retenção institucional e ativação real permanecem dependências humanas explícitas.
+
 ### Privacidade e separação de ambientes — 24/10/2026
 
 - Autorização: responsável solicitou "Implemente conforme sugerido", após proposta de manter código público e separar demonstração de uso privado.

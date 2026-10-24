@@ -10,7 +10,16 @@ for (const name of await readdir("public")) {
       : name.endsWith(".js")
         ? "text/javascript; charset=utf-8"
         : "image/svg+xml";
-  assets["/" + name] = { type, body: await readFile("public/" + name, "utf8") };
+  const binary = name.endsWith(".xlsx");
+  assets["/" + name] = {
+    type: binary
+      ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      : type,
+    binary,
+    body: binary
+      ? (await readFile("public/" + name)).toString("base64")
+      : await readFile("public/" + name, "utf8"),
+  };
 }
 await build({
   entryPoints: ["src/worker.ts"],

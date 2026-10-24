@@ -321,6 +321,13 @@ export function transition(
     department: s.department,
     assignment: activeAssignment(s),
     processUrl: s.processUrl,
+    ...(command.type === "UPDATE_METADATA"
+      ? {
+          title: s.title,
+          description: s.description,
+          processReference: s.processReference,
+        }
+      : {}),
   });
   const children: Aggregate[] = [];
   const m = people.find((p) => p.id === s.managerId)!;
@@ -357,6 +364,55 @@ export function transition(
     return r;
   };
   switch (command.type) {
+    case "UPDATE_METADATA": {
+      editable(s);
+      manager(s, actor);
+      assert(reason, "REASON", "Informe o motivo da atualização.");
+      assert(
+        typeof command.title === "string" &&
+          command.title.trim().length >= 3 &&
+          command.title.length <= 250,
+        "TITLE",
+        "Título deve ter entre 3 e 250 caracteres.",
+      );
+      assert(
+        typeof command.description === "string" &&
+          command.description.length <= 12000,
+        "DESCRIPTION",
+        "Descrição excede 12.000 caracteres.",
+      );
+      assert(
+        command.priority === null ||
+          ["BAIXA", "MEDIA", "ALTA"].includes(command.priority || ""),
+        "PRIORITY",
+        "Prioridade inválida.",
+      );
+      assert(
+        command.priority !== null || !s.assignments.length,
+        "PRIORITY",
+        "Não remova a prioridade de demanda já atribuída.",
+      );
+      const link = command.processUrl
+        ? safeSei(command.processUrl, hosts)
+        : null;
+      assert(
+        !command.processUrl || link,
+        "SEI_URL",
+        "URL SEI fora dos critérios permitidos.",
+      );
+      assert(
+        (command.processReference || "").length <= 120,
+        "PROCESS_REFERENCE",
+        "Referência de processo excede 120 caracteres.",
+      );
+      s.title = command.title.trim();
+      s.description = command.description;
+      s.priority = command.priority as Priority;
+      s.processUrl = link;
+      s.processReference = command.processReference || null;
+      verification = "DECLARADO";
+      break;
+    }
     case "CREATE":
       manager(s, actor);
       out(m, "NEW_TRIAGE_V1", "Nova demanda provisória. Indique o tratamento.");
@@ -971,6 +1027,13 @@ export function transition(
     at,
     before,
     after: structuredClone({
+      ...(command.type === "UPDATE_METADATA"
+        ? {
+            title: s.title,
+            description: s.description,
+            processReference: s.processReference,
+          }
+        : {}),
       status: s.status,
       priority: s.priority,
       department: s.department,

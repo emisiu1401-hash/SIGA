@@ -28,6 +28,7 @@ const eventNames = {
   DECLARE: "Conclusão declarada pelo executor",
   DOCUMENT: "Documentação declarada",
   PRIORITY: "Prioridade alterada",
+  UPDATE_METADATA: "Informações atualizadas por planilha",
   PROCESS: "Referência de processo atualizada",
   TRANSFER: "Transferência solicitada",
   SUPPORT: "Apoio solicitado",
@@ -89,6 +90,119 @@ async function api(path, options = {}) {
   if (!r.ok)
     throw new Error(result.message || "Não foi possível completar a ação.");
   return result;
+}
+async function downloadFile(path, fallback) {
+  const response = await fetch(path);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Falha no download.");
+  }
+  const blob = await response.blob(),
+    url = URL.createObjectURL(blob),
+    a = document.createElement("a");
+  a.href = url;
+  a.download =
+    response.headers
+      .get("Content-Disposition")
+      ?.match(/filename="([\w.-]+)"/)?.[1] || fallback;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+let auditQuery = new URLSearchParams();
+async function showAudit(target) {
+  const r = await api("/audit/log?" + auditQuery);
+  target.innerHTML = `<section class="operation-panel"><h2>Log detalhado</h2><p>Horários em São Paulo; instante UTC e identificador da requisição nos detalhes. Registros preservados sem edição pelo aplicativo.</p><form id="audit-filter" class="detail-form"><label>Usuário<select name="actor"><option value="">Todos</option>${directory.people.map((p) => `<option value="${e(p.id)}" ${auditQuery.get("actor") === p.id ? "selected" : ""}>${e(p.name)}</option>`).join("")}</select></label><label>Ação<input name="action" maxlength="100" value="${e(auditQuery.get("action") || "")}" placeholder="Ex.: SPREADSHEET_APPLIED"></label><label>Resultado<select name="outcome"><option value="">Todos</option><option ${auditQuery.get("outcome") === "SUCESSO" ? "selected" : ""}>SUCESSO</option><option ${auditQuery.get("outcome") === "NEGADO" ? "selected" : ""}>NEGADO</option></select></label><label>Desde (São Paulo)<input type="datetime-local" name="from" value="${e(auditQuery.get("from") ? new Date(new Date(auditQuery.get("from")).getTime() - 10800000).toISOString().slice(0, 16) : "")}"></label><label>Até (São Paulo)<input type="datetime-local" name="to" value="${e(auditQuery.get("to") ? new Date(new Date(auditQuery.get("to")).getTime() - 10800000).toISOString().slice(0, 16) : "")}"></label><button type="submit">Filtrar log</button></form><button id="audit-download" class="spaced">Baixar arquivo de log (.jsonl)</button><p class="subtext">${r.total} registro(s). Exportação limitada a 5.000 por recorte; o arquivo informa eventual truncamento.</p><div id="audit-entries">${r.entries.map((ev) => `<details class="mail-item"><summary><strong>${e(ev.action)}</strong> · ${e(ev.outcome)}<span class="subtext">${e(ev.actor_name)} · ${e(new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "medium" }).format(new Date(ev.occurred_at)))}</span></summary><p>Usuário: ${e(ev.actor_id || "não autenticado")} · ${e(ev.roles.join(", "))}</p><p>UTC: ${e(ev.occurred_at)} · Origem: ${e(ev.source)}</p><p>Recurso: ${e(ev.resource)} · HTTP: ${e(ev.http_status || "—")} · ${e(ev.duration_ms ?? "—")} ms</p><p>Requisição: ${e(ev.request_id)}</p><pre>${e(JSON.stringify(ev.details, null, 2))}</pre></details>`).join("") || "<p>Nenhum registro neste recorte.</p>"}</div><div class="audit-pages"><button id="audit-prev" ${r.page <= 1 ? "disabled" : ""}>Anterior</button><span>Página ${r.page} de ${Math.max(1, Math.ceil(r.total / r.size))}</span><button id="audit-next" ${r.page * r.size >= r.total ? "disabled" : ""}>Próxima</button></div></section>`;
+  $("#audit-filter").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    auditQuery = new URLSearchParams();
+    for (const [k, v] of new FormData(ev.currentTarget)) {
+      if (v)
+        auditQuery.set(
+          k,
+          ["from", "to"].includes(k)
+            ? new Date(v + ":00-03:00").toISOString()
+            : v,
+        );
+    }
+    await loadOperation();
+  });
+  $("#audit-download").onclick = () =>
+    downloadFile("/api/audit/export?" + auditQuery, "siga-log.jsonl").catch(
+      (error) => toast(error.message),
+    );
+  for (const [id, delta] of [
+    ["audit-prev", -1],
+    ["audit-next", 1],
+  ])
+    $("#" + id).onclick = async () => {
+      auditQuery.set("page", String(r.page + delta));
+      await loadOperation();
+    };
+}
+function showSheets(target) {
+  target.innerHTML = `<section class="operation-panel"><h2>Atualizar por Excel</h2><p>Exporte os registros atuais, edite a planilha e valide o arquivo. A confirmação aplica o lote inteiro e registra a auditoria.</p><p>Nas demandas, edite título, descrição, prioridade e processo. Prazos, responsáveis e encerramento seguem seus fluxos no painel.</p><p class="subtext">Até 5 MB, 1.000 linhas e 100 alterações por confirmação. Prévia válida por 15 minutos. Somente arquivos .xlsx sem fórmulas ou macros.</p><form id="sheet-form" class="detail-form"><label>Dados para atualizar<select name="kind"><option value="demands">Demandas</option><option value="people">Pessoas</option></select></label><div class="sheet-actions"><button type="button" id="sheet-template">Baixar template vazio</button><button type="button" id="sheet-export">Exportar dados atuais</button></div><label>Arquivo Excel<input name="file" type="file" accept=".xlsx" required></label><button type="submit" class="primary">Validar e mostrar prévia</button></form><div id="sheet-preview" role="status" aria-live="polite"></div></section>`;
+  const form = $("#sheet-form");
+  $("#sheet-template").onclick = () =>
+    downloadFile(
+      "/SIGA-modelo-atualizacao.xlsx",
+      "SIGA-modelo-atualizacao.xlsx",
+    ).catch((error) => toast(error.message));
+  $("#sheet-export").onclick = () =>
+    downloadFile(
+      "/api/spreadsheets/export?kind=" + form.elements.kind.value,
+      "siga.xlsx",
+    ).catch((error) => toast(error.message));
+  form.addEventListener("change", () => {
+    $("#sheet-preview").replaceChildren();
+  });
+  form.onsubmit = async (ev) => {
+    ev.preventDefault();
+    const button = form.querySelector('[type="submit"]'),
+      file = form.elements.file.files[0],
+      result = $("#sheet-preview");
+    button.disabled = true;
+    result.textContent = "Validando arquivo…";
+    try {
+      if (!file || file.size > 5000000)
+        throw new Error("Escolha um arquivo .xlsx de até 5 MB.");
+      const response = await fetch(
+        "/api/spreadsheets/preview?kind=" + form.elements.kind.value,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "X-CSRF-Token": context.csrf,
+          },
+          body: file,
+        },
+      );
+      const r = await response.json();
+      if (!response.ok) throw new Error(r.message);
+      result.innerHTML = `<h3 class="spaced">Prévia da atualização</h3><p>${r.rows} linha(s), ${r.changes} alteração(ões), ${r.unchanged} sem mudança. ${r.errorCount} erro(s).</p>${r.errors.map((x) => `<p class="sheet-error">Linha ${x.row}: ${e(x.message)}</p>`).join("")}${r.errorCount ? "<p>Corrija o arquivo e valide novamente. Nenhuma alteração foi aplicada.</p>" : ""}${r.preview.map((x) => `<details class="mail-item"><summary>Linha ${x.row} · ${e(x.id)} · ${x.fields.length} campo(s)</summary>${x.changes.map((c) => `<p><strong>${e(c.field)}</strong><span class="subtext">Antes: ${e(c.before) || "vazio"}</span><span class="subtext">Depois: ${e(c.after) || "vazio"}</span></p>`).join("")}</details>`).join("")}${r.previewId ? '<button id="sheet-confirm" class="primary spaced">Confirmar alterações</button><button id="sheet-cancel" class="spaced">Descartar prévia</button>' : ""}`;
+      $("#sheet-cancel")?.addEventListener("click", () => {
+        result.textContent = "Prévia descartada. Nenhum dado foi alterado.";
+      });
+      $("#sheet-confirm")?.addEventListener("click", async (event) => {
+        event.currentTarget.disabled = true;
+        try {
+          const applied = await api("/spreadsheets/apply", {
+            method: "POST",
+            body: { previewId: r.previewId },
+          });
+          result.textContent = `${applied.count} alteração(ões) aplicada(s) e registrada(s) no log.`;
+          directory = await api("/directory");
+          await load();
+        } catch (error) {
+          result.textContent = error.message;
+        }
+      });
+    } catch (error) {
+      result.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
 }
 function toast(text) {
   $("#toast").textContent = text;
@@ -947,10 +1061,11 @@ async function loadOperation() {
   try {
     if (view === "mail") {
       const r = await api("/mail");
-      target.innerHTML = `<div class="operation-panel"><h2>Caixa de saída</h2><p>Mensagens geradas pelo domínio. SIMULADO não significa enviado.</p>${r.outbox.map((m) => `<details class="mail-item"><summary><span class="badge">${e(m.status)}</span>${e(m.subject)}<span class="subtext">${formatTime(m.created_at)}</span></summary><p>Para: ${e(m.recipient_email)}</p><pre>${e(m.body_text)}</pre></details>`).join("") || "<p>Sem mensagens geradas.</p>"}</div><div class="operation-panel"><h2>Mensagens para revisão</h2><p>Entradas ambíguas, falhas de extração ou aprovações que exigem corroboração humana.</p>${r.reviews.map((m) => `<details class="mail-item"><summary>${e(m.subject || "Sem assunto")}</summary><p>${e(m.reason)}</p><pre>${e(m.fresh_text)}</pre>${context.actor.roles.includes("GESTOR") ? `<button data-triage-review="${e(m.id)}">Registrar como nova demanda para triagem</button>` : ""}</details>`).join("") || "<p>Nenhuma mensagem aguardando revisão.</p>"}</div>`;
+      target.innerHTML = `<div class="operation-panel"><h2>Caixa de saída</h2><p>Mensagens geradas pelo domínio. SIMULADO não significa enviado.</p>${r.outbox.map((m) => `<details class="mail-item"><summary><span class="badge">${e(m.status)}</span>${e(m.subject)}<span class="subtext">${formatTime(m.created_at)}</span></summary><p>Caixa: ${e(m.mailbox_email)}</p><p>Para: ${e(m.recipient_email)}</p>${m.failure_reason ? `<p>Retenção/falha: ${e(m.failure_reason)}</p>` : ""}<pre>${e(m.body_text)}</pre></details>`).join("") || "<p>Sem mensagens geradas.</p>"}</div><div class="operation-panel"><h2>Mensagens para revisão</h2><p>Entradas ambíguas, falhas de extração ou aprovações que exigem corroboração humana.</p>${r.reviews.map((m) => `<details class="mail-item"><summary>${e(m.subject || "Sem assunto")}</summary><p>Caixa: ${e(m.mailbox_email)}</p><p>${e(m.reason)}</p><pre>${e(m.fresh_text)}</pre>${context.actor.roles.includes("GESTOR") ? `<button data-triage-review="${e(m.id)}">Registrar como nova demanda para triagem</button>` : ""}</details>`).join("") || "<p>Nenhuma mensagem aguardando revisão.</p>"}</div>`;
     } else if (view === "audit") {
-      const r = await api("/audit");
-      target.innerHTML = `<div class="operation-panel"><h2>Eventos do domínio</h2><p>Ator, instante, origem e estado são preservados em cada demanda.</p><div class="table-wrap team-table"><table><thead><tr><th>Demanda</th><th>Evento</th><th>Ator</th><th>Data</th><th>Evidência</th></tr></thead><tbody>${r.events.map((ev) => `<tr><td>${e(ev.code)}</td><td>${e(eventNames[ev.type] || ev.type)}</td><td>${e(ev.actor_id)}</td><td>${formatTime(ev.occurred_at)}</td><td>${e(ev.declared_or_verified)}</td></tr>`).join("")}</tbody></table></div></div><div class="operation-panel"><h2>Eventos de segurança</h2>${r.security.map((ev) => `<div class="mail-item"><strong>${e(ev.type)}</strong><p>${e(ev.details)}</p><span class="subtext">${formatTime(ev.occurred_at)}</span></div>`).join("") || "<p>Nenhum evento registrado.</p>"}</div>`;
+      await showAudit(target);
+    } else if (view === "sheets") {
+      showSheets(target);
     } else if (view === "simulator") {
       target.innerHTML = `<div class="operation-grid"><section class="operation-panel"><h2>Simular uma mensagem</h2><p>Teste a interpretação e as regras com identidades fictícias. Nenhum e-mail será enviado.</p><form class="detail-form" id="simulate-form"><label>Remetente fictício<select name="senderId">${directory.people
         .filter(
@@ -990,7 +1105,50 @@ async function loadOperation() {
       });
     } else if (view === "settings") {
       const s = await api("/settings");
-      target.innerHTML = `<div class="operation-grid"><section class="operation-panel"><h2>Conexões e ambiente</h2><p>Credenciais ficam no servidor. Nenhum segredo é devolvido ao navegador.</p><div class="settings-row"><span>Cloudflare Worker + D1<small>Aplicação e persistência transacional</small></span><strong>Preparado</strong></div><div class="settings-row"><span>Modo de operação<small>${s.privateEnvironment ? "Ambiente privado; integrações controladas" : "Dados fictícios e saída simulada"}</small></span><strong>${s.privateEnvironment ? "PRIVADO" : "SIMULAÇÃO"}${s.simulation ? " · integrações desativadas" : ""}</strong></div><div class="settings-row"><span>Motor de IA<small>${e(s.aiProvider)} · ${e(s.aiModel)}</small></span><strong>${s.aiConfigured ? "Token configurado" : "Aguardando token"}</strong></div><div class="settings-row"><span>Gmail API<small>OAuth próprio da aplicação</small></span><strong>${s.gmailConfigured ? "Configurado" : "Aguardando OAuth"}</strong></div><div class="settings-row"><span>Envio real de e-mails</span><strong>${s.sendEnabled ? "Habilitado" : "Desativado"}</strong></div><div class="settings-row"><span>Domínios SEI autorizados</span><strong>${e(s.seiHosts.join(", "))}</strong></div><button id="sync-gmail" class="spaced">Sincronizar Gmail</button></section><section class="operation-panel"><h2>Configurar token de IA</h2><p>Token OpenAI criptografado no servidor com chave própria. Para armazenamento direto no cofre, use o Secret AI_API_KEY da Cloudflare.</p>${context.actor.roles.includes("ADMIN") ? '<form id="ai-form" class="detail-form"><label>Token da API<input type="password" name="token" autocomplete="off" required minlength="20" maxlength="512" placeholder="Insira seu token"></label><button class="primary" type="submit">Salvar token com segurança</button><div id="ai-result" role="status"></div></form>' : "<p>Entre como administrador para configurar o token.</p>"}<p class="spaced">Em simulação, a IA permanece local. A ativação do provedor e o uso institucional devem seguir o guia de operação.</p><h3 class="spaced">Configuração do Gmail</h3><p class="spaced">No Worker, configure os Secrets GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_REFRESH_TOKEN, e a variável MAILBOX_ID com a caixa autorizada. O conector desta conversa não fornece credenciais ao aplicativo.</p></section></div>`;
+      target.innerHTML = `<div class="operation-grid"><section class="operation-panel"><h2>Conexões e ambiente</h2><p>Credenciais ficam no servidor. Nenhum segredo é devolvido ao navegador.</p><div class="settings-row"><span>Cloudflare Worker + D1<small>Aplicação e persistência transacional</small></span><strong>Preparado</strong></div><div class="settings-row"><span>Modo de operação<small>${s.privateEnvironment ? "Ambiente privado; integrações controladas" : "Dados fictícios e saída simulada"}</small></span><strong>${s.privateEnvironment ? "PRIVADO" : "SIMULAÇÃO"}${s.simulation ? " · integrações desativadas" : ""}</strong></div><div class="settings-row"><span>Motor de IA<small>${e(s.aiProvider)} · ${e(s.aiModel)}</small></span><strong>${s.aiConfigured ? "Token configurado" : "Aguardando token"}</strong></div><div class="settings-row"><span>Gmail API<small>OAuth próprio da aplicação</small></span><strong>${s.gmailConfigured ? "Configurado" : "Aguardando OAuth"}</strong></div><div class="settings-row"><span>Envio real de e-mails</span><strong>${s.sendEnabled ? "Habilitado" : "Desativado"}</strong></div><div class="settings-row"><span>Domínios SEI autorizados</span><strong>${e(s.seiHosts.join(", "))}</strong></div><button id="sync-gmail" class="spaced">Sincronizar Gmail</button></section><section class="operation-panel"><h2>Configurar token de IA</h2><p>Token OpenAI criptografado no servidor com chave própria. Para armazenamento direto no cofre, use o Secret AI_API_KEY da Cloudflare.</p>${context.actor.roles.includes("ADMIN") ? '<form id="ai-form" class="detail-form"><label>Token da API<input type="password" name="token" autocomplete="off" required minlength="20" maxlength="512" placeholder="Insira seu token"></label><button class="primary" type="submit">Salvar token com segurança</button><div id="ai-result" role="status"></div></form>' : "<p>Entre como administrador para configurar o token.</p>"}<p class="spaced">Em simulação, a IA permanece local. A ativação do provedor e o uso institucional devem seguir o guia de operação.</p><h3 class="spaced">Configuração do Gmail</h3><p class="spaced">A configuração inicial usa um cliente OAuth Google protegido na Cloudflare. Depois, conecte e troque a caixa pelo formulário abaixo, sem editar código. O conector desta conversa não fornece credenciais ao aplicativo.</p></section></div>`;
+      const gmail = s.gmail;
+      const suggestedEmail =
+        gmail.email ||
+        directory.people.find((p) => p.id === context.actor.id)?.email ||
+        "";
+      target.insertAdjacentHTML(
+        "beforeend",
+        `<section class="operation-panel" id="gmail-account-panel"><h2>Conta Google das comunicações</h2><p>Esta caixa recebe e envia as comunicações do SIGA. Ela é independente do e-mail usado para entrar no sistema.</p><div class="settings-row"><span>Conta conectada</span><strong class="gmail-address">${gmail.email ? e(gmail.email) : "Nenhuma conta conectada"}</strong></div><div class="settings-row"><span>Situação</span><strong>${gmail.connected ? (gmail.paused ? "Pausada após conexão" : "Conectada") : "Aguardando autorização Google"}</strong></div><p>${gmail.oauthReady ? "Informe a nova conta e autorize o acesso na página do Google. O SIGA verifica se a caixa autorizada corresponde ao endereço informado." : 'A configuração inicial da conexão Google ainda precisa ser concluída. Consulte o <a href="https://github.com/emisiu1401-hash/SIGA/blob/main/docs/17_TROCA_DE_CONTA_GMAIL.md" target="_blank" rel="noopener noreferrer">guia de conexão</a>.'}</p>${context.actor.roles.includes("ADMIN") ? `<form id="gmail-account-form" class="detail-form"><label>E-mail Google para as comunicações<input type="email" name="email" value="${e(suggestedEmail)}" required maxlength="254" autocomplete="email" placeholder="Informe a conta Google"></label><label class="gmail-option"><input type="checkbox" name="allowSend">Solicitar também permissão para envio</label><p class="subtext">A troca pausa as comunicações. Mensagens pendentes ficam retidas para revisão e não são transferidas para a nova caixa. O histórico das demandas é preservado.</p><button type="submit" class="primary" ${gmail.oauthReady ? "" : "disabled"}>Conectar ou trocar conta Google</button><div id="gmail-account-result" role="status"></div></form>` : "<p>Somente o administrador pode trocar a conta.</p>"}${gmail.connected && gmail.paused ? `<button class="spaced" id="gmail-account-activate" ${gmail.integrationsEnabled ? "" : "disabled"}>Retomar comunicações desta conta</button><p class="subtext">${gmail.integrationsEnabled ? "A retomada mantém as permissões de leitura/envio configuradas na plataforma." : "A plataforma ainda está em simulação. Leitura e envio reais dependem da ativação das integrações."}</p>` : ""}${gmail.heldMessages ? `<p>${gmail.heldMessages} mensagem(ns) retida(s) após troca de conta. Consulte Correspondência antes de qualquer reenvio.</p>` : ""}</section>`,
+      );
+      $("#gmail-account-form")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget,
+          button = $('button[type="submit"]', form);
+        button.disabled = true;
+        try {
+          const result = await api("/settings/gmail/connect", {
+            method: "POST",
+            body: {
+              email: form.elements.email.value,
+              allowSend: form.elements.allowSend.checked,
+            },
+          });
+          const destination = new URL(result.authorizationUrl);
+          if (destination.origin !== "https://accounts.google.com")
+            throw new Error("Endereço de autorização Google inválido.");
+          location.assign(destination.toString());
+        } catch (error) {
+          $("#gmail-account-result").textContent = error.message;
+          button.disabled = false;
+        }
+      });
+      $("#gmail-account-activate")?.addEventListener("click", async () => {
+        try {
+          await api("/settings/gmail/activate", {
+            method: "POST",
+            body: { connectionId: gmail.connectionId, version: gmail.version },
+          });
+          await loadOperation();
+          toast("Comunicações retomadas para a conta conectada.");
+        } catch (error) {
+          toast(error.message);
+        }
+      });
       $("#ai-form")?.addEventListener("submit", async (event) => {
         event.preventDefault();
         const form = event.currentTarget,
@@ -1067,6 +1225,10 @@ const views = {
     "Simulador de e-mail",
     "Exercite o fluxo principal com mensagens fictícias.",
   ],
+  sheets: [
+    "Planilhas Excel",
+    "Exporte, valide e confirme atualizações em lote.",
+  ],
   audit: [
     "Trilha de auditoria",
     "Decisões, mudanças de estado e eventos de segurança.",
@@ -1085,7 +1247,13 @@ function setView() {
   $("#page-title").innerHTML = e(views[view][0]) + "<span>.</span>";
   $("#page-description").textContent = views[view][1];
   document.title = views[view][0] + " · SIGA";
-  const operation = ["mail", "simulator", "audit", "settings"].includes(view);
+  const operation = [
+    "mail",
+    "simulator",
+    "audit",
+    "settings",
+    "sheets",
+  ].includes(view);
   $("#workspace").hidden = operation;
   $("#operation-content").hidden = !operation;
   $("#dashboard-content").hidden = !["dashboard", "reports"].includes(view);
@@ -1155,6 +1323,34 @@ async function initialize() {
         "</small>"
       : "Direção-Geral<small>Acesso de consulta</small>";
     setView();
+    if (p.has("gmail")) {
+      const result = p.get("gmail"),
+        reason = p.get("reason");
+      const messages = {
+        MAILBOX_MISMATCH:
+          "Você autorizou uma conta diferente da informada. A conta anterior foi mantida.",
+        GMAIL_OAUTH_SCOPES:
+          "As permissões necessárias não foram concedidas. A conta anterior foi mantida.",
+        GMAIL_OAUTH_REFRESH:
+          "O Google não forneceu acesso contínuo. Conecte novamente com consentimento offline.",
+        GMAIL_OAUTH_STATE:
+          "Autorização expirada ou já utilizada. Inicie a conexão novamente.",
+        GMAIL_OAUTH_CANCELLED:
+          "Conexão cancelada. A conta anterior foi mantida.",
+        GMAIL_BUSY:
+          "Há processamento em andamento ou a conta mudou. Atualize e conecte novamente.",
+      };
+      toast(
+        result === "connected"
+          ? "Conta Google conectada e verificada. As comunicações estão pausadas até sua retomada."
+          : messages[reason] ||
+              "Não foi possível conectar o Google. A conta anterior foi mantida.",
+      );
+      const clean = new URL(location.href);
+      clean.searchParams.delete("gmail");
+      clean.searchParams.delete("reason");
+      history.replaceState(null, "", clean);
+    }
   } catch (error) {
     toast(error.message);
     $("#result-count").textContent =

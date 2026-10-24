@@ -11,10 +11,27 @@ export default defineConfig({
     ...(process.platform === "win32" ? { channel: "chrome" } : {}),
     screenshot: "only-on-failure",
   },
-  webServer: {
-    command: "node tests/private-server.mjs",
-    url: "http://127.0.0.1:8789/api/health",
-    reuseExistingServer: false,
-    timeout: 30000,
-  },
+  projects: [
+    { name: "private", testMatch: /(?:privacy|sheets)\.spec\.mjs/ },
+    {
+      name: "gmail-oauth",
+      testMatch: "gmail.spec.mjs",
+      use: { baseURL: "http://127.0.0.1:8790" },
+    },
+  ],
+  webServer: [
+    {
+      command: "node tests/private-server.mjs",
+      url: "http://127.0.0.1:8789/api/health",
+      reuseExistingServer: false,
+      timeout: 30000,
+    },
+    {
+      command: "node tests/private-server.mjs",
+      url: "http://127.0.0.1:8790/api/health",
+      reuseExistingServer: false,
+      timeout: 30000,
+      env: { SIGA_OAUTH_BROWSER_TEST: "true" },
+    },
+  ],
 });

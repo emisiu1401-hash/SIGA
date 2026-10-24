@@ -1,5 +1,6 @@
 export type Role = "GESTOR" | "EXECUTOR" | "SDG_LEITOR" | "ADMIN";
 export type Person = {
+  revision?: number;
   id: string;
   name: string;
   email: string;
@@ -158,6 +159,9 @@ export type RuntimeEnv = {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_REFRESH_TOKEN?: string;
+  GOOGLE_OAUTH_REDIRECT_URI?: string;
+  GMAIL_CONNECTION_ID?: string;
+  GMAIL_CONTROL_VERSION?: number;
   MAILBOX_ID?: string;
   OUTBOX_MAILBOX_ID?: string;
 };

@@ -242,7 +242,9 @@ test("triagem de entrada real exige gestor autenticado e não cria duplicata", a
   await seedDirectory(repo);
   const id = crypto.randomUUID();
   await db
-    .prepare("INSERT INTO ingestion_reviews VALUES(?,?,?,?,?,?,?)")
+    .prepare(
+      "INSERT INTO ingestion_reviews(id,provider_message_id,sender,subject,fresh_text,reason,created_at) VALUES(?,?,?,?,?,?,?)",
+    )
     .bind(
       id,
       "provider-review-1",

@@ -1031,6 +1031,20 @@ dialog h2 {
   grid-template-columns: 1fr 1fr;
   gap: 18px;
 }
+.gmail-address {
+  overflow-wrap: anywhere;
+}
+.detail-form .gmail-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.gmail-option input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+}
 .mail-item {
   border-top: 1px solid #e0e7d8;
   padding: 16px 0;
@@ -1701,4 +1715,28 @@ dialog .timeline time,
 .chart-grid,
 .demand-cards {
   animation: enter 0.3s ease-out;
+}
+.sheet-actions,
+.audit-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 16px 0;
+}
+#sheet-preview,
+.mail-item {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.sheet-error {
+  color: #8a2424;
+  margin: 12px 0;
+}
+#sheet-preview button {
+  margin-right: 12px;
+}
+.mail-item pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

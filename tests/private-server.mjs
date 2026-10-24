@@ -4,6 +4,8 @@ import { randomBytes } from "node:crypto";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
 import { LocalD1 } from "../scripts/sqlite.mjs";
 import { fetchHandler } from "../dist/testing.js";
+const oauthBrowserTest = process.env.SIGA_OAUTH_BROWSER_TEST === "true";
+const port = oauthBrowserTest ? 8790 : 8789;
 const db = new LocalD1();
 db.migrate();
 const at = new Date().toISOString();
@@ -45,7 +47,27 @@ const jwt = await new SignJWT({ email: "owner@example.test" })
   .setIssuedAt()
   .setExpirationTime("1h")
   .sign(privateKey);
-globalThis.fetch = async (url) => {
+globalThis.fetch = async (url, options = {}) => {
+  if (
+    oauthBrowserTest &&
+    String(url) === "https://oauth2.googleapis.com/token"
+  ) {
+    const form = new URLSearchParams(options.body);
+    const payload = JSON.parse(form.get("code"));
+    return Response.json({
+      access_token: Buffer.from(JSON.stringify(payload)).toString("base64url"),
+      refresh_token: "dummy-browser-refresh-token-123456789",
+      scope: payload.scope,
+    });
+  }
+  if (
+    oauthBrowserTest &&
+    String(url) === "https://gmail.googleapis.com/gmail/v1/users/me/profile"
+  ) {
+    const auth = new Headers(options.headers).get("Authorization").slice(7);
+    const payload = JSON.parse(Buffer.from(auth, "base64url").toString());
+    return Response.json({ emailAddress: payload.email, historyId: "100" });
+  }
   if (String(url) !== issuer + "/cdn-cgi/access/certs")
     throw Error("External network prohibited in private UI tests");
   return Response.json({ keys: [jwk] });
@@ -53,7 +75,7 @@ globalThis.fetch = async (url) => {
 const env = {
   OUTBOX_MAILBOX_ID: "private-mailbox",
   DB: db,
-  DEPLOYMENT_MODE: "private",
+  DEPLOYMENT_MODE: oauthBrowserTest ? "development" : "private",
   PUBLIC_DEMO: "false",
   ACCESS_REQUIRED: "true",
   ACCESS_TEAM_DOMAIN: issuer,
@@ -65,15 +87,24 @@ const env = {
   AI_MODEL: "test-model",
   EMAIL_SEND_ENABLED: "false",
   SEI_ALLOWED_HOSTS: "sei.tjmsp.jus.br",
+  ...(oauthBrowserTest
+    ? {
+        GOOGLE_CLIENT_ID: "dummy-browser-client.apps.googleusercontent.com",
+        GOOGLE_CLIENT_SECRET: "dummy-browser-client-secret",
+        GOOGLE_OAUTH_REDIRECT_URI: `http://127.0.0.1:${port}/api/gmail/oauth/callback`,
+      }
+    : {}),
 };
-const port = 8789;
 createServer(async (req, res) => {
   try {
     const chunks = [];
     let size = 0;
     for await (const chunk of req) {
       size += chunk.length;
-      if (size > 24000) {
+      if (
+        size >
+        (req.url?.startsWith("/api/spreadsheets/preview") ? 5000000 : 24000)
+      ) {
         res.writeHead(413);
         res.end();
         return;

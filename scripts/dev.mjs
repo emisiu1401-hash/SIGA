@@ -64,7 +64,10 @@ createServer(async (req, res) => {
     let size = 0;
     for await (const chunk of req) {
       size += chunk.length;
-      if (size > 24000) {
+      if (
+        size >
+        (req.url?.startsWith("/api/spreadsheets/preview") ? 5000000 : 24000)
+      ) {
         res.writeHead(413);
         res.end("Payload too large");
         return;

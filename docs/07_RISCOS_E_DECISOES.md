@@ -56,3 +56,9 @@
 - DEC-I05: token de IA salvo por ADMIN com AES-GCM, decriptado apenas no servidor; Secret AI_API_KEY tem precedência. Provedor inicial OpenAI, endpoint fixo. Simulação continua mock, sem custo de inferência.
 - DEC-I06: condições de aprovação são registradas e exigem confirmação posterior antes de efetivação; comportamento conservador e reversível, sem presumir satisfação das ressalvas.
 - DEC-I07: testes integrados complementam expressamente a prioridade omitida no fixture antigo; nenhuma prioridade inferida. Feriados, autenticação individual, anexos/retenção, threading Gmail e restauração institucional estão documentados como pendentes.
+# Decisões complementares — Gmail, Excel e auditoria (24/10/2026)
+
+- Conta Gmail de comunicação é independente da identidade de acesso. Troca exige consentimento Google pelo administrador, valida e-mail real e retém saída antiga; nenhuma fila é redirecionada automaticamente.
+- Atualização Excel é limitada a metadados e cadastro. Aceite, prazo, transferência e encerramento continuam no domínio; importação exige prévia e confirmação atômica com versões.
+- Log persiste em D1 com bloqueio de edição/exclusão pelo aplicativo. Administradores da infraestrutura ainda podem alterar schema; o hash do download não representa cadeia de custódia imutável externa. Política de retenção e arquivamento institucional permanece por definir.
+- O cliente OAuth do aplicativo é uma configuração inicial própria; o conector Gmail da conversa não transfere tokens ao Worker. Nenhuma credencial real foi inventada ou publicada.

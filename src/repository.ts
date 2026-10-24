@@ -1,4 +1,5 @@
 import type { Aggregate, Person, RuntimeEnv } from "./types.ts";
+import { auditStatement } from "./audit.ts";
 import {
   activeAssignment,
   assert,
@@ -12,6 +13,7 @@ export class Repository {
     public db: D1Database,
     public simulation = true,
     public outboxMailboxId = "mock-mailbox",
+    public requestId?: string,
   ) {}
   async people(): Promise<Person[]> {
     const { results } = await this.db
@@ -25,6 +27,7 @@ export class Repository {
         roles: string;
         department_id: string | null;
         active: number;
+        revision: number;
       }>();
     return results.map((p) => ({
       id: p.id,
@@ -33,9 +36,27 @@ export class Repository {
       roles: (p.roles || "").split(",") as Person["roles"],
       department: p.department_id?.replace("dept-", "").toUpperCase() || null,
       active: !!p.active,
+      revision: p.revision,
     }));
   }
   async personSave(p: Person, actorId: string, at: string) {
+    const people = await this.people(),
+      previous = people.find((x) => x.id === p.id),
+      actor = people.find((x) => x.id === actorId);
+    await this.db.batch([
+      ...this.personStatements(p, actorId, at),
+      auditStatement(this.db, {
+        actor,
+        requestId: this.requestId,
+        action: previous ? "PERSON_UPDATED" : "PERSON_CREATED",
+        resource: p.id,
+        source: "DOMAIN",
+        at,
+        details: { before: previous || null, after: p },
+      }),
+    ]);
+  }
+  personStatements(p: Person, actorId: string, at: string) {
     assert(
       p.name.trim().length >= 2 &&
         p.name.length <= 120 &&
@@ -62,7 +83,7 @@ export class Repository {
     const statements = [
       this.db
         .prepare(
-          `INSERT INTO users(id,full_name,email,active,created_at,department_id) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name,email=excluded.email,active=excluded.active,department_id=excluded.department_id`,
+          `INSERT INTO users(id,full_name,email,active,created_at,department_id) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name,email=excluded.email,active=excluded.active,department_id=excluded.department_id,revision=users.revision+1`,
         )
         .bind(
           p.id,
@@ -96,7 +117,7 @@ export class Repository {
           at,
         ),
     ];
-    await this.db.batch(statements);
+    return statements;
   }
   async get(id: string): Promise<Aggregate | null> {
     const r = await this.db
@@ -316,6 +337,8 @@ export class Repository {
       version: s.version,
       children: children.map((c) => ({ id: c.id, code: c.code })),
     };
+    const event = s.events.at(-1),
+      actor = (await this.people()).find((p) => p.id === event?.actorId);
     await this.db.batch([
       ...this.statements(s, previous),
       ...children.flatMap((c) => this.statements(c, null)),
@@ -324,11 +347,31 @@ export class Repository {
           "INSERT INTO siga_commands(id,demand_id,result_json,created_at) VALUES(?,?,?,?)",
         )
         .bind(commandId, s.id, JSON.stringify(result), s.updatedAt),
+      auditStatement(this.db, {
+        actor,
+        requestId: this.requestId || commandId,
+        action: "DEMAND_" + (event?.type || "SAVE"),
+        resource: s.code,
+        source: "DOMAIN",
+        at: s.updatedAt,
+        details: {
+          before: previous
+            ? {
+                version: previous.version,
+                status: previous.status,
+                priority: previous.priority,
+              }
+            : null,
+          after: { version: s.version, status: s.status, priority: s.priority },
+          eventId: event?.id,
+          reason: event?.reason,
+        },
+      }),
     ]);
     return result;
   }
   async audit(actorId: string | null, type: string, details: string) {
-    await this.db
+    const statement = this.db
       .prepare(
         "INSERT INTO security_events(id,actor_id,type,details,occurred_at) VALUES(?,?,?,?,?)",
       )
@@ -338,14 +381,27 @@ export class Repository {
         type,
         details.slice(0, 500),
         new Date().toISOString(),
-      )
-      .run();
+      );
+    const actor = actorId
+      ? (await this.people()).find((p) => p.id === actorId)
+      : null;
+    await this.db.batch([
+      statement,
+      auditStatement(this.db, {
+        actor,
+        requestId: this.requestId,
+        action: type,
+        source: "SECURITY",
+        outcome: /DENIED/.test(type) ? "NEGADO" : "SUCESSO",
+        details: { message: details },
+      }),
+    ]);
   }
   async emails(limit = 50) {
     return (
       await this.db
         .prepare(
-          "SELECT id,recipient_email,subject,body_text,status,created_at FROM outbound_messages ORDER BY created_at DESC,id LIMIT ?",
+          "SELECT o.id,o.mailbox_id,m.account_ref mailbox_email,o.recipient_email,o.subject,o.body_text,o.status,o.failure_reason,o.created_at FROM outbound_messages o JOIN mailbox_accounts m ON m.id=o.mailbox_id ORDER BY o.created_at DESC,o.id LIMIT ?",
         )
         .bind(limit)
         .all()
@@ -657,9 +713,8 @@ export async function dashboard(
   const size = Math.min(50, Math.max(1, Number(params.get("size")) || 12)),
     page = Math.max(1, Number(params.get("page")) || 1);
   const sync = await repo.db
-    .prepare(
-      "SELECT last_sync_at,last_error FROM gmail_sync_state WHERE id='primary'",
-    )
+    .prepare("SELECT last_sync_at,last_error FROM gmail_sync_state WHERE id=?")
+    .bind(env.OUTBOX_MAILBOX_ID || "primary")
     .first<{ last_sync_at: string | null; last_error: string | null }>();
   return {
     kpis,

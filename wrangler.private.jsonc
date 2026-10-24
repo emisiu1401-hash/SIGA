@@ -19,6 +19,7 @@
     "PUBLIC_DEMO": "false",
     "ACCESS_REQUIRED": "true",
     "OUTBOX_MAILBOX_ID": "private-mailbox",
+    "GOOGLE_OAUTH_REDIRECT_URI": "https://siga-private.emisiu1401.workers.dev/api/gmail/oauth/callback",
     "ACCESS_TEAM_DOMAIN": "https://siga-emisiu1401.cloudflareaccess.com",
     "ACCESS_AUD": "0a7189f9fecdf1760f4aa4da7bb05f7126f729bda90c88bfaa4f6ab5d28f9431",
     "SIMULATION_MODE": "true",
