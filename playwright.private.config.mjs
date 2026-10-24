@@ -12,6 +12,11 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
+    {
+      name: "email-security",
+      testMatch: "email-security.spec.mjs",
+      use: { baseURL: "http://127.0.0.1:8793" },
+    },
     { name: "private", testMatch: /(?:privacy|sheets)\.spec\.mjs/ },
     {
       name: "gmail-oauth",
@@ -25,6 +30,13 @@ export default defineConfig({
     },
   ],
   webServer: [
+    {
+      command: "node tests/private-server.mjs",
+      url: "http://127.0.0.1:8793/api/health",
+      reuseExistingServer: false,
+      timeout: 30000,
+      env: { SIGA_EMAIL_BROWSER_TEST: "true" },
+    },
     {
       command: "node tests/private-server.mjs",
       url: "http://127.0.0.1:8792/api/health",

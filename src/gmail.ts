@@ -1,45 +1,25 @@
-import { assert, codes, freshText, localDate } from "./domain.ts";
+import { assert, codes, localDate } from "./domain.ts";
 import { boundedJson, configuredAi, interpret } from "./interpreter.ts";
 import { Repository } from "./repository.ts";
 import type { RuntimeEnv } from "./types.ts";
 import { gmailOperation } from "./gmailAccounts.ts";
 
-type GmailPayload = {
-  mimeType?: string;
-  headers?: { name: string; value: string }[];
-  body?: { data?: string; size?: number };
-  parts?: GmailPayload[];
-};
+import {
+  assessEmail,
+  safeMimeContent,
+  type MimePart,
+} from "./emailSecurity.ts";
+import { storeEmailReview } from "./emailReview.ts";
+import type { Interpretation } from "./interpreter.ts";
+type GmailPayload = MimePart;
 type GmailMessage = {
   id: string;
   threadId: string;
   internalDate: string;
   payload: GmailPayload;
 };
-const decode = (s: string) =>
-  new TextDecoder().decode(
-    Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (x) =>
-      x.charCodeAt(0),
-    ),
-  );
-export function mimeText(p: GmailPayload, depth = 0): string {
-  if (depth > 12) return "";
-  const body = p.body?.data?.slice(0, 32000);
-  if (p.mimeType === "text/plain" && body) return decode(body);
-  const parts = (p.parts || []).slice(0, 100);
-  const plain = parts
-    .filter((x) => x.mimeType !== "text/html")
-    .map((x) => mimeText(x, depth + 1))
-    .filter(Boolean)
-    .join("\n")
-    .slice(0, 24000);
-  if (plain) return plain;
-  return p.mimeType === "text/html" && body
-    ? freshText(decode(body))
-    : parts
-        .map((x) => mimeText(x, depth + 1))
-        .join("\n")
-        .slice(0, 24000);
+export function mimeText(p: GmailPayload): string {
+  return safeMimeContent(p).text;
 }
 export function institutionAuthenticated(message: GmailMessage) {
   const h = message.payload.headers || [];
@@ -232,22 +212,40 @@ export async function synchronizeGmail(repo: Repository, env: RuntimeEnv) {
           cursor = data.nextPageToken || "";
         } while (cursor);
       }
-      let imported = 0;
-      for (const id of ids) {
-        operation.check();
-        if (
+      const known = new Set(
+        (
           await repo.db
             .prepare(
-              "SELECT id FROM ingestion_reviews WHERE provider_message_id=? AND mailbox_id=?",
+              "SELECT provider_message_id FROM ingestion_reviews WHERE mailbox_id=? AND provider_message_id IN (SELECT value FROM json_each(?))",
             )
-            .bind(id, mailboxKey)
-            .first()
-        )
-          continue;
+            .bind(mailboxKey, JSON.stringify([...ids]))
+            .all<{ provider_message_id: string }>()
+        ).results.map((r) => r.provider_message_id),
+      );
+      const pending = [...ids].filter((id) => !known.has(id));
+      const batch = pending.slice(0, 5);
+      let imported = 0,
+        aiCalls = 0;
+      for (const id of batch) {
+        operation.check();
         const r = await get(
           "messages/" + encodeURIComponent(id) + "?format=full",
         );
-        if (r.status === 404) continue;
+        if (r.status === 404) {
+          // A deleted message must not occupy every subsequent bounded batch.
+          await storeEmailReview(repo, {
+            mailbox: mailboxKey,
+            providerId: id,
+            sender: "não analisado",
+            assessment: assessEmail("Mensagem indisponível no Gmail", "", [
+              "MESSAGE_UNAVAILABLE",
+            ]),
+            reason:
+              "Mensagem removida ou indisponível na caixa. Sem interpretação ou ação; registro técnico permite continuar o lote.",
+          });
+          imported++;
+          continue;
+        }
         assert(
           r.ok,
           "GMAIL_MESSAGE",
@@ -255,88 +253,102 @@ export async function synchronizeGmail(repo: Repository, env: RuntimeEnv) {
           503,
         );
         let msg: GmailMessage;
-        let text: string;
+        let content: ReturnType<typeof safeMimeContent>;
         try {
           msg = (await boundedJson(r, 500000)) as GmailMessage;
-          text = freshText(mimeText(msg.payload));
-        } catch (error) {
-          if (
-            !(error instanceof SyntaxError) &&
-            String(error) !== "Error: RESPONSE_TOO_LARGE"
-          )
-            throw error;
-          await repo.db
-            .prepare(
-              "INSERT OR IGNORE INTO ingestion_reviews(id,mailbox_id,provider_message_id,sender,subject,fresh_text,reason,created_at) VALUES(?,?,?,?,?,?,?,?)",
-            )
-            .bind(
-              crypto.randomUUID(),
-              mailboxKey,
-              id,
-              "não analisado",
+          content = safeMimeContent(msg.payload);
+          assert(
+            Array.isArray(msg.payload.headers),
+            "GMAIL_FORMAT",
+            "Cabeçalhos inválidos.",
+          );
+        } catch {
+          await storeEmailReview(repo, {
+            mailbox: mailboxKey,
+            providerId: id,
+            sender: "não analisado",
+            assessment: assessEmail(
               "Mensagem excede limite ou formato inválido",
               "",
+              ["MIME_INVALID"],
+            ),
+            reason:
               "Mensagem preservada no Gmail; corpo não importado. Revisão humana necessária. O lote continua para não bloquear a caixa.",
-              new Date().toISOString(),
-            )
-            .run();
+          });
           imported++;
           continue;
         }
         const auth = institutionAuthenticated(msg);
-        const headers = msg.payload.headers || [];
-        const subject = (
-          headers.find((x) => x.name.toLowerCase() === "subject")?.value ||
-          "Sem assunto"
-        ).slice(0, 250);
-        const references = codes(subject + " " + text);
-        // Institutional approvals are proposed for authenticated human review, never applied from From/DMARC alone.
-        let reason = !auth.valid
-          ? "Autenticidade insuficiente, mensagem automática ou domínio não permitido."
-          : references.length > 1
-            ? "Múltiplos códigos: correlação ambígua."
-            : "Mensagem institucional: confirmar identidade e proposta no painel antes de aplicar. Aprovações por e-mail exigem corroboração humana.";
-        if (auth.valid && env.AI_PROVIDER === "openai") {
+        const subject =
+          msg.payload.headers?.find((x) => x.name.toLowerCase() === "subject")
+            ?.value || "Sem assunto";
+        const assessment = assessEmail(
+          subject,
+          content.scanText,
+          content.flags,
+        );
+        // Scan every inline alternative before selecting the visible, fresh text.
+        assessment.text = assessEmail("", content.text).text;
+        const references = codes(subject + " " + assessment.text);
+        let reason =
+          assessment.status === "QUARANTINED"
+            ? "Conteúdo isolado por política de segurança. Sem envio à IA ou aplicação automática. O original permanece no Gmail."
+            : !auth.valid
+              ? "Autenticidade insuficiente, mensagem automática ou domínio não permitido."
+              : references.length > 1
+                ? "Múltiplos códigos: correlação ambígua."
+                : "Mensagem institucional: confirmar identidade e proposta no painel antes de aplicar. Aprovações por e-mail exigem corroboração humana.";
+        if (content.attachments)
+          reason += " Anexos ignorados: " + content.attachments + ".";
+        let proposal: Interpretation | undefined;
+        if (
+          assessment.status === "REVIEW" &&
+          auth.valid &&
+          references.length <= 1 &&
+          env.AI_PROVIDER === "openai" &&
+          aiCalls < 2
+        ) {
+          aiCalls++;
           try {
-            const proposal = await interpret(
-              text,
+            proposal = await interpret(
+              assessment.text,
               null,
               localDate(new Date()),
               await configuredAi(env, repo),
             );
-            reason +=
-              " Proposta de extração (sem efeito de decisão): " +
-              JSON.stringify(proposal);
           } catch {
             reason +=
               " Falha de extração: entrada preservada para revisão humana.";
           }
         }
-        await repo.db
-          .prepare(
-            "INSERT OR IGNORE INTO ingestion_reviews(id,mailbox_id,provider_message_id,sender,subject,fresh_text,reason,created_at) VALUES(?,?,?,?,?,?,?,?)",
-          )
-          .bind(
-            crypto.randomUUID(),
-            mailboxKey,
-            id,
-            auth.sender || "desconhecido",
-            subject,
-            text,
-            reason,
-            new Date().toISOString(),
-          )
-          .run();
+        await storeEmailReview(repo, {
+          mailbox: mailboxKey,
+          providerId: id,
+          sender: auth.sender || "desconhecido",
+          assessment,
+          reason,
+          proposal,
+        });
         imported++;
       }
       operation.check();
-      await repo.db
-        .prepare(
-          "UPDATE gmail_sync_state SET history_id=?,last_sync_at=?,last_error=NULL WHERE id=?",
-        )
-        .bind(profile.historyId, new Date().toISOString(), mailboxKey)
-        .run();
-      return { imported, recovered, cutoff: localDate(new Date()) };
+      const hasMore = pending.length > batch.length;
+      // Keep the history and recovery anchor until all messages have a durable
+      // review record; subsequent batches skip records already stored.
+      if (!hasMore)
+        await repo.db
+          .prepare(
+            "UPDATE gmail_sync_state SET history_id=?,last_sync_at=?,last_error=NULL WHERE id=?",
+          )
+          .bind(profile.historyId, new Date().toISOString(), mailboxKey)
+          .run();
+      return {
+        imported,
+        recovered,
+        hasMore,
+        aiCalls,
+        cutoff: localDate(new Date()),
+      };
     } catch (e) {
       await repo.db
         .prepare("UPDATE gmail_sync_state SET last_error=? WHERE id=?")

@@ -43,6 +43,17 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Proteção de e-mail e IA — 24/10/2026
+
+- Autorização: responsável identificou risco de instruções/códigos em e-mails e solicitou providências contra sabotagem.
+- Resultado: quarentena antes da IA; inspeção de assunto/corpo/MIME e Unicode; anexos excluídos; interpretação real sempre humana/não verificada; contrato limitado e sem ferramentas. Removido fallback de execução com revisão pendente.
+- Interface/API: Correspondência sinaliza quarentena; triagem direta rejeitada; gestor reescreve pedido em formulário vazio, justifica e confirma criação apenas provisória. Reavaliação no servidor, histórico e idempotência preservados.
+- Coleta: até cinco mensagens novas e duas tentativas de extração por lote; cursor preservado enquanto restar fila; mensagens inválidas isoladas sem bloquear as seguintes. Auditoria atômica inclui UTC, origem, correlação, sinais e hash da cópia limitada, sem corpo ou segredos.
+- Arquivos: migration 0008, `emailSecurity.ts`, `emailReview.ts`, interpretador, Gmail, Worker, contrato JSON, UI e testes. Guia 20 e documentos atualizados.
+- Validação: 80 testes Node/SQLite, 9 cenários gerais e 5 privados de navegador; ataques, saída comprometida, limites, preservação de tabelas, quarentena/reescrita, seis larguras e axe. TypeScript/formato/guarda de segredos/validadores Python/audit de produção/dry-run passaram. Backup pré-0008 criptografado e restauração em memória com integridade/FK conferidos.
+- Limites: filtros não cobrem toda injeção; a barreira central é a falta de autoridade da IA e a decisão humana/determinística. Sem novo scan Codex Security selado ou homologação institucional. Nenhuma leitura/envio real ou API paga nos testes. Primeiro login pessoal com MFA continua sendo ato do usuário.
+- Publicação autorizada nos ambientes existentes, mantendo demo somente consulta e privado com Access/senha. Integrações reais permanecem desativadas.
+
 ### Senhas individuais e habilitação de usuários — 24/10/2026
 
 - Pedido: tela de senha, senhas iniciais do titular/SDG, troca, recuperação Gmail e habilitação de Executor/Gestor. E-mail do SDG fornecido diretamente na conversa e usado somente na base/configuração privadas; nenhuma identidade real nova no repositório.

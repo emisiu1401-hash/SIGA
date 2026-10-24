@@ -1126,7 +1126,7 @@ async function loadOperation() {
   try {
     if (view === "mail") {
       const r = await api("/mail");
-      target.innerHTML = `<div class="operation-panel"><h2>Caixa de saída</h2><p>Mensagens geradas pelo domínio. SIMULADO não significa enviado.</p>${r.outbox.map((m) => `<details class="mail-item"><summary><span class="badge">${e(m.status)}</span>${e(m.subject)}<span class="subtext">${formatTime(m.created_at)}</span></summary><p>Caixa: ${e(m.mailbox_email)}</p><p>Para: ${e(m.recipient_email)}</p>${m.failure_reason ? `<p>Retenção/falha: ${e(m.failure_reason)}</p>` : ""}<pre>${e(m.body_text)}</pre></details>`).join("") || "<p>Sem mensagens geradas.</p>"}</div><div class="operation-panel"><h2>Mensagens para revisão</h2><p>Entradas ambíguas, falhas de extração ou aprovações que exigem corroboração humana.</p>${r.reviews.map((m) => `<details class="mail-item"><summary>${e(m.subject || "Sem assunto")}</summary><p>Caixa: ${e(m.mailbox_email)}</p><p>${e(m.reason)}</p><pre>${e(m.fresh_text)}</pre>${context.actor.roles.includes("GESTOR") ? `<button data-triage-review="${e(m.id)}">Registrar como nova demanda para triagem</button>` : ""}</details>`).join("") || "<p>Nenhuma mensagem aguardando revisão.</p>"}</div>`;
+      target.innerHTML = `<div class="operation-panel"><h2>Caixa de saída</h2><p>Mensagens geradas pelo domínio. SIMULADO não significa enviado.</p>${r.outbox.map((m) => `<details class="mail-item"><summary><span class="badge">${e(m.status)}</span>${e(m.subject)}<span class="subtext">${formatTime(m.created_at)}</span></summary><p>Caixa: ${e(m.mailbox_email)}</p><p>Para: ${e(m.recipient_email)}</p>${m.failure_reason ? `<p>Retenção/falha: ${e(m.failure_reason)}</p>` : ""}<pre>${e(m.body_text)}</pre></details>`).join("") || "<p>Sem mensagens geradas.</p>"}</div><div class="operation-panel"><h2>Mensagens para revisão</h2><p>Entradas ambíguas, falhas de extração ou aprovações que exigem corroboração humana.</p>${r.reviews.map((m) => `<details class="mail-item"><summary>${e(m.subject || "Sem assunto")}</summary><p>Caixa: ${e(m.mailbox_email)}</p>${m.security_status === "QUARANTINED" ? `<p class="badge">Quarentena de segurança</p><p>Conteúdo isolado. Somente um pedido reescrito pelo gestor pode seguir para triagem. Anexos e links não são executados.</p><p>Sinais: ${e(m.security_flags.join(", "))}</p>` : ""}<p>${e(m.reason)}</p><pre>${e(m.fresh_text)}</pre>${m.ai_proposal_json ? `<details><summary>Proposta da IA · sem efeito de decisão</summary><pre>${e(m.ai_proposal_json)}</pre></details>` : ""}${context.actor.roles.includes("GESTOR") ? (m.security_status === "QUARANTINED" ? `<button data-curate-review="${e(m.id)}">Reescrever pedido para triagem</button>` : `<button data-triage-review="${e(m.id)}">Registrar como nova demanda para triagem</button>`) : ""}</details>`).join("") || "<p>Nenhuma mensagem aguardando revisão.</p>"}</div>`;
     } else if (view === "audit") {
       await showAudit(target);
     } else if (view === "access") {
@@ -1243,6 +1243,46 @@ async function loadOperation() {
         }
       });
     }
+    $$("[data-curate-review]").forEach((button) =>
+      button.addEventListener("click", () => {
+        showDialog(
+          "Reescrever pedido isolado",
+          `<form id="curate-email" class="detail-form"><p>Transcreva somente o pedido administrativo. O conteúdo original permanece em quarentena; nenhuma instrução dele será executada.</p><label>Assunto seguro<input name="subject" required minlength="3" maxlength="250"></label><label>Pedido administrativo<textarea name="text" required minlength="3" maxlength="12000"></textarea></label><label>Justificativa do aproveitamento<textarea name="reason" required minlength="10" maxlength="1000"></textarea></label><label><input type="checkbox" name="confirm" required> Revisei o texto e confirmo somente a criação de demanda provisória.</label><p id="curate-error" class="form-error" hidden></p><button type="submit" class="primary">Registrar pedido reescrito</button></form>`,
+        );
+        $("#curate-email").addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget,
+            submit = form.querySelector('[type="submit"]');
+          submit.disabled = true;
+          const data = new FormData(form);
+          try {
+            const result = await api(
+              "/reviews/" + button.dataset.curateReview + "/triage",
+              {
+                method: "POST",
+                body: {
+                  subject: data.get("subject"),
+                  text: data.get("text"),
+                  reason: data.get("reason"),
+                  confirm: data.get("confirm") === "on",
+                },
+              },
+            );
+            closeDialog();
+            toast(
+              "Pedido reescrito registrado; original mantido em quarentena.",
+            );
+            await openDemand(result.id);
+          } catch (error) {
+            const target = $("#curate-error");
+            target.textContent = error.message;
+            target.hidden = false;
+          } finally {
+            submit.disabled = false;
+          }
+        });
+      }),
+    );
     $$("[data-triage-review]").forEach((button) =>
       button.addEventListener("click", async () => {
         button.disabled = true;

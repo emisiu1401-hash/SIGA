@@ -1,5 +1,11 @@
 # Validação executada — 24/10/2026
 
+## Proteção de e-mails e IA — atualização mais recente
+
+80 testes Node/SQLite passaram, com sete cenários novos de segurança cobrindo múltiplas cargas hostis, MIME/anexos, tentativa de extrair segredos, saída comprometida do modelo, fallback de prorrogação, limites/deduplicação Gmail e quarentena/reescrita na API. Os nove testes gerais e cinco fluxos privados de navegador passaram; o novo fluxo verifica seis larguras, axe, ausência de execução/requests do conteúdo e reescrita humana. Backup privado pré-0008 restaurado em memória com integridade/FK e criptografia DPAPI conferidas. TypeScript, formato, guarda de segredos, três validadores Python, auditoria de produção e dry-run passaram. [Controle implementado e limites](20_SEGURANCA_DE_EMAIL_E_IA.md).
+
+Não houve leitura/envio Gmail real, chamada paga de IA, simulação de MFA pessoal ou novo scan Codex Security selado. A avaliação anterior abaixo mantém o seu escopo histórico.
+
 ## Versão com senhas individuais
 
 73 testes Node/SQLite passaram, incluindo hash/sal, limitação atômica de tentativas, vínculo Access/e-mail, cookies, bloqueio antes da troca temporária, revogação, recuperação Gmail controlada, token expirado/forjado/reutilizado/concorrente, SDG sem escrita e novo Gestor sem encerramento. A suíte geral de nove testes de navegador passou. Os quatro fluxos privados incluem login, troca, SDG, administração de acessos, recuperação via Gmail fictício e logout; seis larguras e axe na tela de senha. Uso do token em fragmento também foi exercitado quando a tela de login já estava aberta.

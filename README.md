@@ -22,6 +22,8 @@ Aplicação baseada na especificação v2.3: núcleo de regras determinísticas,
 - Importação/exportação Excel com template, validação, prévia, confirmação e versões; log persistente com filtros e download JSONL. [Como usar](docs/18_PLANILHAS_E_LOG.md).
 - Senha individual após Cloudflare Access, troca inicial obrigatória, recuperação via Gmail e administração de acessos por perfil. [Senhas e usuários](docs/19_SENHAS_E_USUARIOS.md).
 
+- Quarentena de e-mails suspeitos, anexos fora da interpretação, propostas da IA sem autoridade e reescrita segura pelo gestor. [Proteções e limites](docs/20_SEGURANCA_DE_EMAIL_E_IA.md).
+
 ## Executar
 
 Requisitos: Node.js 24 e pnpm 11.

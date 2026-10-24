@@ -87,7 +87,7 @@ test("migrations versionadas, integridade referencial e lote atômico", async ()
   db.migrate();
   assert.equal(
     db.raw.prepare("SELECT count(*) n FROM runtime_migrations").get().n,
-    7,
+    8,
   );
   assert.deepEqual(db.raw.prepare("PRAGMA foreign_key_check").all(), []);
   await assert.rejects(

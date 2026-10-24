@@ -4,28 +4,94 @@
   "title": "SIGA — Resultado estruturado da interpretação (proposta, sem comando de escrita)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "language", "menu_id", "intentions", "facts", "clarification_questions", "requires_human_review", "notes"],
+  "required": [
+    "schema_version",
+    "language",
+    "menu_id",
+    "intentions",
+    "facts",
+    "clarification_questions",
+    "requires_human_review",
+    "notes"
+  ],
   "properties": {
-    "schema_version": {"const": "1.0"},
-    "language": {"const": "pt-BR"},
-    "menu_id": {"type": ["string", "null"]},
+    "schema_version": {
+      "const": "1.0"
+    },
+    "language": {
+      "const": "pt-BR"
+    },
+    "menu_id": {
+      "type": ["string", "null"],
+      "maxLength": 80
+    },
     "intentions": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["type", "target", "date", "person_reference", "justification", "conditions", "evidence_excerpt", "declared_only"],
+        "required": [
+          "type",
+          "target",
+          "date",
+          "person_reference",
+          "justification",
+          "conditions",
+          "evidence_excerpt",
+          "declared_only"
+        ],
         "properties": {
-          "type": {"enum": ["ASSIGN","INITIAL_DUE_DATE","CONFIRM_DUE_DATE","REQUEST_EXTENSION","REQUEST_TRANSFER","REQUEST_SUPPORT","REPORT_BLOCKER","DECLARE_STAGE_COMPLETE","PROPOSE_CHILD_DEMAND","APPROVE_WITHOUT_RESERVATIONS","APPROVE_WITH_RESERVATIONS","REJECT","ASK_CLARIFICATION","OTHER_INSTRUCTION","ASK_QUESTION","NO_ACTION"]},
-          "target": {"type": ["string", "null"]},
-          "date": {"type": ["string", "null"], "description": "ISO local YYYY-MM-DD; null se impossível ancorar sem ambiguidade"},
-          "person_reference": {"type": ["string", "null"]},
-          "justification": {"type": ["string", "null"]},
-          "conditions": {"type": ["string", "null"]},
-          "evidence_excerpt": {"type": "string", "maxLength": 600},
-          "declared_only": {"type": "boolean"}
+          "type": {
+            "enum": [
+              "ASSIGN",
+              "INITIAL_DUE_DATE",
+              "CONFIRM_DUE_DATE",
+              "REQUEST_EXTENSION",
+              "REQUEST_TRANSFER",
+              "REQUEST_SUPPORT",
+              "REPORT_BLOCKER",
+              "DECLARE_STAGE_COMPLETE",
+              "PROPOSE_CHILD_DEMAND",
+              "APPROVE_WITHOUT_RESERVATIONS",
+              "APPROVE_WITH_RESERVATIONS",
+              "REJECT",
+              "ASK_CLARIFICATION",
+              "OTHER_INSTRUCTION",
+              "ASK_QUESTION",
+              "NO_ACTION"
+            ]
+          },
+          "target": {
+            "type": ["string", "null"],
+            "maxLength": 120
+          },
+          "date": {
+            "type": ["string", "null"],
+            "description": "ISO local YYYY-MM-DD; null se impossível ancorar sem ambiguidade",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "person_reference": {
+            "type": ["string", "null"],
+            "maxLength": 254
+          },
+          "justification": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          },
+          "conditions": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          },
+          "evidence_excerpt": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "declared_only": {
+            "type": "boolean"
+          }
         }
-      }
+      },
+      "maxItems": 6
     },
     "facts": {
       "type": "array",
@@ -34,15 +100,39 @@
         "additionalProperties": false,
         "required": ["field", "value", "source", "verification"],
         "properties": {
-          "field": {"type": "string"},
-          "value": {"type": ["string", "number", "boolean", "null"]},
-          "source": {"type": "string"},
-          "verification": {"enum": ["DECLARADO", "VERIFICADO", "NAO_VERIFICADO"]}
+          "field": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "value": {
+            "type": ["string", "number", "boolean", "null"],
+            "maxLength": 2000
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "verification": {
+            "enum": ["DECLARADO", "VERIFICADO", "NAO_VERIFICADO"]
+          }
         }
-      }
+      },
+      "maxItems": 20
     },
-    "clarification_questions": {"type": "array", "items": {"type": "string"}},
-    "requires_human_review": {"type": "boolean"},
-    "notes": {"type": "string"}
+    "clarification_questions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "maxItems": 5
+    },
+    "requires_human_review": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 1000
+    }
   }
 }

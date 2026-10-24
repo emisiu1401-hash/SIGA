@@ -36,6 +36,12 @@ import {
   configuredAi,
 } from "./interpreter.ts";
 import { synchronizeGmail, dispatchMail } from "./gmail.ts";
+import { assessEmail } from "./emailSecurity.ts";
+import {
+  curatedEmail,
+  reviewAssessment,
+  storeEmailReview,
+} from "./emailReview.ts";
 import {
   gmailAccountStatus,
   gmailOutboxId,
@@ -496,7 +502,23 @@ async function handleRequest(
                 "SELECT r.*,m.account_ref mailbox_email FROM ingestion_reviews r LEFT JOIN mailbox_accounts m ON m.id=r.mailbox_id WHERE NOT EXISTS(SELECT 1 FROM siga_commands c WHERE c.id='review:'||r.id) ORDER BY r.created_at DESC LIMIT 50",
               )
               .all()
-          ).results,
+          ).results.map((row) => {
+            const assessment = reviewAssessment(
+              row as {
+                subject: string;
+                fresh_text: string;
+                security_status?: string;
+                security_flags_json?: string;
+              },
+            );
+            return {
+              ...row,
+              subject: assessment.subject,
+              fresh_text: assessment.text,
+              security_status: assessment.status,
+              security_flags: assessment.flags,
+            };
+          }),
         }),
       );
     }
@@ -505,7 +527,7 @@ async function handleRequest(
       assert(
         actor.roles.includes("GESTOR"),
         "FORBIDDEN",
-        "A triagem de mensagens exige decisão de Emerson.",
+        "A triagem de mensagens exige decisão de gestor autenticado.",
         403,
       );
       const key = "review:" + triage[1];
@@ -519,14 +541,17 @@ async function handleRequest(
           fresh_text: string;
           sender: string;
           provider_message_id: string;
+          security_status: string;
+          security_flags_json: string;
         }>();
       assert(review, "NOT_FOUND", "Mensagem não encontrada.", 404);
+      const content = curatedEmail(review, await body(request));
       const people = await repo.people();
       const s = createAggregate(
         crypto.randomUUID(),
         await repo.nextCode(now),
-        review.subject || "Mensagem para triagem",
-        review.fresh_text,
+        content.subject || "Mensagem para triagem",
+        content.text,
         "u-gestor",
         now,
       );
@@ -537,7 +562,12 @@ async function handleRequest(
           type: "CREATE",
           origin: "EMAIL",
           reason:
-            "Triagem expressa pelo gestor. Mensagem de origem: " +
+            (content.curated
+              ? "Texto reescrito pelo gestor após quarentena. Justificativa: " +
+                content.reason +
+                ". "
+              : "Triagem expressa pelo gestor. ") +
+            "Mensagem de origem: " +
             review.provider_message_id,
         },
         actor,
@@ -802,7 +832,10 @@ async function handleRequest(
         "TEXT",
         "Informe texto para interpretação.",
       );
-      const effective = await configuredAi(env, repo);
+      const effective =
+        assessEmail("", input.text).status === "QUARANTINED"
+          ? env
+          : await configuredAi(env, repo);
       return secured(
         json({
           interpretation: await interpret(
@@ -961,8 +994,12 @@ async function handleRequest(
       const key = input.commandId;
       const duplicate = await repo.command(key);
       if (duplicate) return secured(json({ ...duplicate, duplicate: true }));
-      const text = freshText(String(input.text || "")),
-        subject = freshText(String(input.subject || ""));
+      const assessment = assessEmail(
+        String(input.subject || ""),
+        String(input.text || ""),
+      );
+      const text = assessment.text,
+        subject = assessment.subject;
       assert(
         text.length >= 2,
         "TEXT",
@@ -971,6 +1008,23 @@ async function handleRequest(
       const people = await repo.people();
       const sender = people.find((p) => p.id === input.senderId && p.active);
       assert(sender, "SENDER", "Selecione um remetente fictício cadastrado.");
+      if (assessment.status === "QUARANTINED") {
+        await storeEmailReview(repo, {
+          mailbox: repo.outboxMailboxId,
+          providerId: key,
+          sender: sender.email,
+          assessment,
+          reason:
+            "Simulação isolada: conteúdo suspeito, sem execução de comandos.",
+        });
+        return secured(
+          json({
+            review: true,
+            quarantined: true,
+            security_flags: assessment.flags,
+          }),
+        );
+      }
       let s = input.demandId ? await repo.get(String(input.demandId)) : null;
       const found = codes(subject + " " + text);
       assert(

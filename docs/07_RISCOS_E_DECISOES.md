@@ -68,3 +68,8 @@ Senhas individuais são uma camada adicional ao Cloudflare Access/MFA. E-mail da
 - Atualização Excel é limitada a metadados e cadastro. Aceite, prazo, transferência e encerramento continuam no domínio; importação exige prévia e confirmação atômica com versões.
 - Log persiste em D1 com bloqueio de edição/exclusão pelo aplicativo. Administradores da infraestrutura ainda podem alterar schema; o hash do download não representa cadeia de custódia imutável externa. Política de retenção e arquivamento institucional permanece por definir.
 - O cliente OAuth do aplicativo é uma configuração inicial própria; o conector Gmail da conversa não transfere tokens ao Worker. Nenhuma credencial real foi inventada ou publicada.
+
+
+## 24/10/2026 — fronteira de confiança do e-mail
+
+Entrada de e-mail nunca concede autoridade operacional à IA. Toda extração real exige revisão e permanece não verificada; nenhum acesso a ferramentas é oferecido. Conteúdo suspeito fica em quarentena sem chamada ao modelo. Anexos ficam fora da interpretação. Aproveitamento humano exige texto reescrito, justificativa e confirmação, somente para demanda provisória, com nova validação no servidor. Detecção é complementar à separação de autoridade; não se promete reconhecimento integral de ataques. Limites e evidências em `20_SEGURANCA_DE_EMAIL_E_IA.md`. Integrações reais continuam desligadas.
