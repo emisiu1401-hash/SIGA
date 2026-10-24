@@ -107,6 +107,7 @@ small {
   top: 8px;
 }
 #sidebar {
+  overflow-y: auto;
   position: fixed;
   inset: 0 auto 0 0;
   width: 232px;
@@ -1739,4 +1740,11 @@ dialog .timeline time,
 .mail-item pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.temporary-access {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #fff1ce;
+  padding: 18px;
+  color: #173c34;
 }

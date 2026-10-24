@@ -10,6 +10,18 @@ import {
 } from "./domain.ts";
 import { Repository, dashboard } from "./repository.ts";
 import {
+  passwordMode,
+  passwordLogin,
+  changePassword,
+  requestPasswordReset,
+  resetPassword,
+  provisionPassword,
+  accessAccounts,
+  disablePassword,
+  passwordLogout,
+  clearPasswordCookie,
+} from "./passwords.ts";
+import {
   login,
   session,
   csrfCheck,
@@ -119,7 +131,18 @@ async function handleRequest(
         403,
       );
     if (!path.startsWith("/api/")) {
-      const asset = __ASSETS__[path === "/" ? "/index.html" : path];
+      let assetPath = path === "/" ? "/index.html" : path;
+      if (passwordMode(env)) {
+        if (path === "/login") assetPath = "/login.html";
+        if (path === "/" || path === "/index.html") {
+          try {
+            await session(request, env, repo, access);
+          } catch {
+            assetPath = "/login.html";
+          }
+        }
+      }
+      const asset = __ASSETS__[assetPath];
       return secured(
         asset
           ? new Response(
@@ -141,6 +164,61 @@ async function handleRequest(
           simulation: env.SIMULATION_MODE === "true",
         }),
       );
+    if (
+      passwordMode(env) &&
+      path === "/api/auth/meta" &&
+      request.method === "GET"
+    )
+      return secured(
+        json({
+          passwordLogin: true,
+          email: access?.email || null,
+          accessProtected: !!access,
+        }),
+      );
+    if (
+      passwordMode(env) &&
+      ["/api/login", "/api/auth/forgot", "/api/auth/reset"].includes(path) &&
+      request.method === "POST"
+    ) {
+      assert(
+        request.headers.get("Origin") === url.origin,
+        "ORIGIN",
+        "Origem não autorizada.",
+        403,
+      );
+      const input = await body(request);
+      if (path === "/api/auth/forgot")
+        return secured(
+          json(await requestPasswordReset(request, repo, env, input, access)),
+        );
+      if (path === "/api/auth/reset") {
+        const result = await resetPassword(repo, input, access);
+        return secured(
+          new Response(JSON.stringify(result), {
+            headers: {
+              "Content-Type": "application/json",
+              "Set-Cookie": clearPasswordCookie(request),
+            },
+          }),
+        );
+      }
+      const result = await passwordLogin(request, repo, input, access);
+      return secured(
+        new Response(
+          JSON.stringify({
+            csrf: result.csrf,
+            mustChangePassword: result.mustChangePassword,
+          }),
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "Set-Cookie": result.cookie,
+            },
+          },
+        ),
+      );
+    }
     if (path === "/api/login" && request.method === "POST") {
       assert(
         !access,
@@ -179,6 +257,13 @@ async function handleRequest(
     }
     const current = await session(request, env, repo, access);
     const actor = current.actor;
+    if (current.mustChangePassword)
+      assert(
+        ["/api/session", "/api/auth/change", "/api/logout"].includes(path),
+        "PASSWORD_CHANGE_REQUIRED",
+        "Troque a senha temporária antes de acessar os dados.",
+        403,
+      );
     if (current.authenticated) trace.actor = actor;
     if (
       current.authenticated &&
@@ -239,13 +324,22 @@ async function handleRequest(
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
       assert(
-        current.authenticated && !actor.roles.includes("SDG_LEITOR"),
+        current.authenticated &&
+          (!actor.roles.includes("SDG_LEITOR") ||
+            ["/api/auth/change", "/api/logout"].includes(path)),
         "FORBIDDEN",
         "O perfil SDG é somente leitura. Entre com um perfil autorizado.",
         403,
       );
       csrfCheck(request, current.csrf);
     }
+    if (current.mustChangePassword)
+      assert(
+        ["/api/session", "/api/auth/change", "/api/logout"].includes(path),
+        "PASSWORD_CHANGE_REQUIRED",
+        "Troque a senha temporária antes de acessar os dados.",
+        403,
+      );
     if (path === "/api/session" && request.method === "GET")
       return secured(
         json({
@@ -254,15 +348,74 @@ async function handleRequest(
           simulation: env.SIMULATION_MODE === "true",
           deployment: env.DEPLOYMENT_MODE || "development",
           accessProtected: !!access,
+          passwordLogin: passwordMode(env),
         }),
       );
     if (path === "/api/logout" && request.method === "POST") {
+      if (passwordMode(env))
+        return secured(
+          new Response(JSON.stringify({ ok: true }), {
+            headers: {
+              "Content-Type": "application/json",
+              "Set-Cookie": await passwordLogout(request, repo, actor),
+            },
+          }),
+        );
       const r = json({ ok: true });
       r.headers.set(
         "Set-Cookie",
         "siga_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
       );
       return secured(r);
+    }
+    if (path === "/api/auth/change" && request.method === "POST")
+      return secured(
+        new Response(
+          JSON.stringify(
+            await changePassword(repo, actor, await body(request)),
+          ),
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "Set-Cookie": clearPasswordCookie(request),
+            },
+          },
+        ),
+      );
+    if (path === "/api/auth/accounts" && request.method === "GET") {
+      assert(
+        actor.roles.includes("ADMIN"),
+        "FORBIDDEN",
+        "Acesso restrito à administração.",
+        403,
+      );
+      return secured(
+        json({
+          accounts: await accessAccounts(repo),
+          accessEmails: (env.ACCESS_ALLOWED_EMAILS || "")
+            .split(",")
+            .map((x) => x.trim().toLowerCase()),
+        }),
+      );
+    }
+    if (path === "/api/auth/accounts" && request.method === "POST") {
+      const input = await body(request);
+      assert(
+        typeof input.userId === "string" && typeof input.username === "string",
+        "AUTH_USER",
+        "Informe a pessoa e o identificador de acesso.",
+      );
+      return secured(
+        json(
+          await provisionPassword(repo, actor, input.userId, input.username),
+        ),
+      );
+    }
+    if (path === "/api/auth/accounts/disable" && request.method === "POST") {
+      const input = await body(request);
+      return secured(
+        json(await disablePassword(repo, actor, String(input.userId || ""))),
+      );
     }
     if (path === "/api/dashboard" && request.method === "GET")
       return secured(
@@ -350,7 +503,7 @@ async function handleRequest(
     const triage = path.match(/^\/api\/reviews\/([a-zA-Z0-9-]+)\/triage$/);
     if (triage && request.method === "POST") {
       assert(
-        actor.id === "u-gestor" && actor.roles.includes("GESTOR"),
+        actor.roles.includes("GESTOR"),
         "FORBIDDEN",
         "A triagem de mensagens exige decisão de Emerson.",
         403,
@@ -664,7 +817,7 @@ async function handleRequest(
     }
     if (path === "/api/demands" && request.method === "POST") {
       assert(
-        actor.id === "u-gestor" && actor.roles.includes("GESTOR"),
+        actor.roles.includes("GESTOR"),
         "FORBIDDEN",
         "Criação restrita ao gestor.",
         403,
@@ -684,7 +837,7 @@ async function handleRequest(
         await repo.nextCode(now),
         String(input.title || ""),
         String(input.description || ""),
-        actor.id,
+        "u-gestor",
         now,
       );
       const next = transition(

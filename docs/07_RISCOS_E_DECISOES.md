@@ -1,5 +1,11 @@
 # 07 — Registro de decisões, suposições e riscos
 
+## Complemento autorizado: senhas e gestores adicionais — 24/10/2026
+
+O pedido atual autoriza cadastrar gestores adicionais. O papel permite gestão compartilhada, mas a competência de encerramento definitivo continua exclusiva de Emerson. Essa autorização substitui a restrição anterior de cadastro ordinário do papel GESTOR; não altera os demais requisitos de aceite, prazos, validação humana ou atuação da IA.
+
+Senhas individuais são uma camada adicional ao Cloudflare Access/MFA. E-mail da identidade verificada precisa corresponder ao cadastro. Cadastro/credencial no SIGA não modifica automaticamente a allowlist da Cloudflare. A administração deve manter cadastro ativo, conta habilitada e e-mail autorizado em ambas as listas. Reemissão pelo ADMIN é poder sensível e auditado; a credencial do titular só pode ser reemitida pelo titular. Recuperação Gmail só funciona após configuração própria, permissão de envio e ativação da integração.
+
 **Data:** 23/10/2026. Este documento recebe novas ADRs a cada incremento. Não assumir que algo foi homologado pelo simples fato de constar como sugestão.
 
 ## Decisões negociais confirmadas pela simulação

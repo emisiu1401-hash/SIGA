@@ -3,9 +3,11 @@ import { createServer } from "node:http";
 import { randomBytes } from "node:crypto";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
 import { LocalD1 } from "../scripts/sqlite.mjs";
-import { fetchHandler } from "../dist/testing.js";
+import { fetchHandler, hashPassword } from "../dist/testing.js";
 const oauthBrowserTest = process.env.SIGA_OAUTH_BROWSER_TEST === "true";
-const port = oauthBrowserTest ? 8790 : 8789;
+const passwordBrowserTest = process.env.SIGA_PASSWORD_BROWSER_TEST === "true";
+const port = passwordBrowserTest ? 8792 : oauthBrowserTest ? 8790 : 8789;
+const passwordEmails = [];
 const db = new LocalD1();
 db.migrate();
 const at = new Date().toISOString();
@@ -47,7 +49,54 @@ const jwt = await new SignJWT({ email: "owner@example.test" })
   .setIssuedAt()
   .setExpirationTime("1h")
   .sign(privateKey);
+const sdgJwt = await new SignJWT({ email: "sdg@example.test" })
+  .setProtectedHeader({ alg: "RS256", kid: jwk.kid })
+  .setSubject("sdg-browser-test")
+  .setIssuer(issuer)
+  .setAudience("private-browser-test")
+  .setIssuedAt()
+  .setExpirationTime("1h")
+  .sign(privateKey);
+if (passwordBrowserTest) {
+  await db
+    .prepare(
+      "INSERT INTO users(id,full_name,email,active,created_at) VALUES('u-sdg','SDG de teste','sdg@example.test',1,?)",
+    )
+    .bind(at)
+    .run();
+  await db.prepare("INSERT INTO user_roles VALUES('u-sdg','SDG_LEITOR')").run();
+  for (const [id, username, email, password] of [
+    [
+      "u-gestor",
+      "emerson",
+      "owner@example.test",
+      "Fixture-initial-owner-password-2026!",
+    ],
+    ["u-sdg", "sdg", "sdg@example.test", "Fixture-initial-sdg-password-2026!"],
+  ])
+    await db
+      .prepare(
+        "INSERT INTO login_accounts(user_id,username,password_hash,email_snapshot,updated_at) VALUES(?,?,?,?,?)",
+      )
+      .bind(id, username, await hashPassword(password), email, at)
+      .run();
+}
 globalThis.fetch = async (url, options = {}) => {
+  if (passwordBrowserTest) {
+    if (String(url) === "https://oauth2.googleapis.com/token")
+      return Response.json({ access_token: "fixture-password-mail-access" });
+    if (String(url).endsWith("/profile"))
+      return Response.json({ emailAddress: "sender@example.test" });
+    if (String(url).endsWith("/messages/send")) {
+      const mime = Buffer.from(
+          JSON.parse(options.body).raw,
+          "base64url",
+        ).toString(),
+        text = Buffer.from(mime.split("\r\n\r\n")[1], "base64").toString();
+      passwordEmails.push(text);
+      return Response.json({ id: "password-mail-fixture" });
+    }
+  }
   if (
     oauthBrowserTest &&
     String(url) === "https://oauth2.googleapis.com/token"
@@ -80,13 +129,27 @@ const env = {
   ACCESS_REQUIRED: "true",
   ACCESS_TEAM_DOMAIN: issuer,
   ACCESS_AUD: "private-browser-test",
-  ACCESS_ALLOWED_EMAILS: "owner@example.test",
+  ACCESS_ALLOWED_EMAILS: passwordBrowserTest
+    ? "owner@example.test,sdg@example.test"
+    : "owner@example.test",
   SECRET_ENCRYPTION_KEY: randomBytes(48).toString("base64url"),
   SIMULATION_MODE: "true",
   AI_PROVIDER: "mock",
   AI_MODEL: "test-model",
   EMAIL_SEND_ENABLED: "false",
   SEI_ALLOWED_HOSTS: "sei.tjmsp.jus.br",
+  ...(passwordBrowserTest
+    ? {
+        AUTH_MODE: "access_password",
+        APP_ORIGIN: `http://127.0.0.1:${port}`,
+        SIMULATION_MODE: "false",
+        EMAIL_SEND_ENABLED: "true",
+        GOOGLE_CLIENT_ID: "fixture-client",
+        GOOGLE_CLIENT_SECRET: "fixture-secret",
+        GOOGLE_REFRESH_TOKEN: "fixture-refresh",
+        MAILBOX_ID: "sender@example.test",
+      }
+    : {}),
   ...(oauthBrowserTest
     ? {
         GOOGLE_CLIENT_ID: "dummy-browser-client.apps.googleusercontent.com",
@@ -97,6 +160,11 @@ const env = {
 };
 createServer(async (req, res) => {
   try {
+    if (passwordBrowserTest && req.url === "/__test__/mail") {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(passwordEmails));
+      return;
+    }
     const chunks = [];
     let size = 0;
     for await (const chunk of req) {
@@ -114,7 +182,14 @@ createServer(async (req, res) => {
     const method = req.method || "GET";
     const request = new Request(`http://127.0.0.1:${port}${req.url}`, {
       method,
-      headers: { ...req.headers, "Cf-Access-Jwt-Assertion": jwt },
+      headers: {
+        ...req.headers,
+        "Cf-Access-Jwt-Assertion":
+          passwordBrowserTest &&
+          req.headers.cookie?.includes("test_identity=sdg")
+            ? sdgJwt
+            : jwt,
+      },
       ...(["GET", "HEAD"].includes(method)
         ? {}
         : { body: Buffer.concat(chunks) }),

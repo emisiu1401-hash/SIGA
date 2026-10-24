@@ -374,6 +374,66 @@ export function rawMail(
   const text = `From: ${from}\r\nTo: ${to}\r\nSubject: ${headerSubject}\r\nMessage-ID: <${id.replace(/[^a-zA-Z0-9.-]/g, "-")}@siga.local>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${btoa(String.fromCharCode(...new TextEncoder().encode(body)))}`;
   return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
+export async function sendSecurityMail(
+  env: RuntimeEnv,
+  to: string,
+  subject: string,
+  body: string,
+  signal: AbortSignal,
+) {
+  assert(
+    env.SIMULATION_MODE !== "true" &&
+      env.EMAIL_SEND_ENABLED === "true" &&
+      env.MAILBOX_ID,
+    "PASSWORD_MAIL_SETUP",
+    "Envio de recuperação desativado.",
+    503,
+  );
+  assert(
+    /^[^\s@<>\r\n]+@[^\s@<>\r\n]+$/.test(to) && !to.endsWith(".invalid"),
+    "MAIL_RECIPIENT",
+    "Destinatário inválido.",
+  );
+  const token = await accessToken(env, signal);
+  const profile = await fetch(
+    "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+    {
+      headers: { Authorization: "Bearer " + token },
+      signal,
+      redirect: "error",
+    },
+  );
+  assert(profile.ok, "GMAIL_PROFILE", "Falha na comunicação Gmail.", 503);
+  const data = (await boundedJson(profile, 24000)) as { emailAddress?: string };
+  assert(
+    data.emailAddress?.toLowerCase() === env.MAILBOX_ID.toLowerCase(),
+    "MAILBOX_MISMATCH",
+    "Envio bloqueado: conta Gmail divergente.",
+    503,
+  );
+  const response = await fetch(
+    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        raw: rawMail(env.MAILBOX_ID, to, subject, body, crypto.randomUUID()),
+      }),
+      signal,
+      redirect: "error",
+    },
+  );
+  assert(
+    response.ok,
+    "GMAIL_SEND",
+    "Não foi possível enviar a recuperação.",
+    503,
+  );
+  await boundedJson(response, 24000);
+}
 export async function dispatchMail(repo: Repository, env: RuntimeEnv) {
   if (env.SIMULATION_MODE === "true" || env.EMAIL_SEND_ENABLED !== "true")
     return { sent: 0, disabled: true };

@@ -9,6 +9,12 @@ export type AccessIdentity = { email: string; csrf: string };
 
 export function deploymentGuard(env: RuntimeEnv) {
   assert(
+    !env.AUTH_MODE || env.AUTH_MODE === "access_password",
+    "AUTH_CONFIG",
+    "Modo de autenticação inválido.",
+    503,
+  );
+  assert(
     ["demo", "private", "development"].includes(env.DEPLOYMENT_MODE || ""),
     "DEPLOYMENT_CONFIG",
     "Ambiente não configurado. Acesso bloqueado.",

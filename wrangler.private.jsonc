@@ -18,6 +18,8 @@
     "DEPLOYMENT_MODE": "private",
     "PUBLIC_DEMO": "false",
     "ACCESS_REQUIRED": "true",
+    "AUTH_MODE": "access_password",
+    "APP_ORIGIN": "https://siga-private.emisiu1401.workers.dev",
     "OUTBOX_MAILBOX_ID": "private-mailbox",
     "GOOGLE_OAUTH_REDIRECT_URI": "https://siga-private.emisiu1401.workers.dev/api/gmail/oauth/callback",
     "ACCESS_TEAM_DOMAIN": "https://siga-emisiu1401.cloudflareaccess.com",

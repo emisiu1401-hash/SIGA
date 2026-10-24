@@ -665,6 +665,21 @@ export async function applySpreadsheet(
           .bind(at, value),
         repo.db
           .prepare(
+            "DELETE FROM password_sessions WHERE user_id IN (SELECT json_extract(value,'$.id') FROM json_each(?))",
+          )
+          .bind(value),
+        repo.db
+          .prepare(
+            "DELETE FROM password_links WHERE user_id IN (SELECT json_extract(value,'$.id') FROM json_each(?))",
+          )
+          .bind(value),
+        repo.db
+          .prepare(
+            "UPDATE login_accounts SET version=version+1 WHERE user_id IN (SELECT json_extract(value,'$.id') FROM json_each(?))",
+          )
+          .bind(value),
+        repo.db
+          .prepare(
             "DELETE FROM user_roles WHERE user_id IN (SELECT json_extract(value,'$.id') FROM json_each(?))",
           )
           .bind(value),

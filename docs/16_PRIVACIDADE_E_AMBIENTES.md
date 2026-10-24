@@ -5,7 +5,7 @@
 | Ambiente | Endereço | Banco | Acesso |
 |---|---|---|---|
 | Demonstração | https://siga.emisiu1401.workers.dev | `siga` | Público, dados fictícios, somente leitura |
-| Privado | https://siga-private.emisiu1401.workers.dev | `siga-private` | Cloudflare Access + MFA + cadastro ativo + papéis do SIGA |
+| Privado | https://siga-private.emisiu1401.workers.dev | `siga-private` | Cloudflare Access + MFA + senha individual + cadastro ativo + papéis do SIGA |
 
 O código continua público em https://github.com/emisiu1401-hash/SIGA. E-mails autorizados, tokens, banco privado, backups e configurações locais não são publicados no repositório. Os identificadores de banco e a audiência Access no código são identificadores públicos, não credenciais.
 
@@ -14,6 +14,8 @@ A demonstração rejeita todos os métodos de gravação, inclusive login, inici
 Cada banco tem um marcador `app_settings.deployment_identity`. O Worker verifica esse marcador antes de servir dados: trocar a configuração do Worker público para o banco privado resulta em bloqueio. Um ambiente sem modo explícito também é bloqueado. O modo de desenvolvimento só atende URLs de loopback.
 
 ## Primeiro acesso privado
+
+Além de Access/MFA, informe usuário/e-mail e senha individual no SIGA. No primeiro acesso, substitua a senha temporária. Consulte [19_SENHAS_E_USUARIOS.md](19_SENHAS_E_USUARIOS.md) para troca, recuperação e habilitação de usuários.
 
 1. Abra o endereço privado. A Cloudflare solicitará o e-mail autorizado e um código de autenticação.
 2. Cadastre seu segundo fator pessoal (autenticador TOTP, chave de segurança ou biometria) quando solicitado. O segundo fator é obrigatório na política; o Codex não cadastrou um fator em seu nome.

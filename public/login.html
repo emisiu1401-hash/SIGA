@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Entrar · SIGA</title>
+    <link rel="icon" href="/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/login.css" />
+    <script src="/login.js" type="module"></script>
+  </head>
+  <body class="auth-page">
+    <main class="auth-shell">
+      <a href="/" class="auth-brand"
+        ><img src="/mark.svg" alt="" width="40" height="40" /><span
+          >SIGA<small>GESTÃO DE ATIVIDADES</small></span
+        ></a
+      >
+      <div class="auth-card">
+        <p class="eyebrow">ACESSO INDIVIDUAL</p>
+        <h1 id="auth-title">Bem-vindo ao SIGA</h1>
+        <p id="auth-description">
+          Entre com seu usuário ou e-mail e sua senha.
+        </p>
+        <p id="access-identity" class="subtext"></p>
+        <form id="auth-form" class="detail-form">
+          <label id="account-field"
+            >Usuário ou e-mail<input
+              name="account"
+              required
+              maxlength="254"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false" /></label
+          ><label id="current-field"
+            >Senha<input
+              name="password"
+              type="password"
+              required
+              maxlength="128"
+              autocomplete="current-password" /></label
+          ><label id="new-field" hidden
+            >Nova senha<input
+              name="newPassword"
+              type="password"
+              minlength="15"
+              maxlength="128"
+              autocomplete="new-password"
+              disabled /></label
+          ><label id="confirm-field" hidden
+            >Confirme a nova senha<input
+              name="confirm"
+              type="password"
+              minlength="15"
+              maxlength="128"
+              autocomplete="new-password"
+              disabled
+          /></label>
+          <p id="password-help" class="subtext" hidden>
+            Use de 15 a 128 caracteres. Prefira uma frase longa e exclusiva para
+            o SIGA.
+          </p>
+          <div id="auth-message" role="status" aria-live="polite"></div>
+          <button id="auth-submit" type="submit" class="primary">Entrar</button>
+        </form>
+        <button id="auth-forgot" class="auth-text-button">
+          Esqueci minha senha</button
+        ><button id="auth-back" class="auth-text-button" hidden>
+          Voltar para entrar
+        </button>
+        <p class="auth-footnote">
+          Sua identidade também é verificada pelo Cloudflare Access. A conta de
+          comunicações Gmail é independente da sua conta de acesso.
+        </p>
+      </div>
+      <p class="auth-footer">
+        Controle de acesso individual · ações auditáveis
+      </p>
+    </main>
+  </body>
+</html>

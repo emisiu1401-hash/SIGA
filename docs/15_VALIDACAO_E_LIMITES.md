@@ -1,5 +1,13 @@
 # Validação executada — 24/10/2026
 
+## Versão com senhas individuais
+
+73 testes Node/SQLite passaram, incluindo hash/sal, limitação atômica de tentativas, vínculo Access/e-mail, cookies, bloqueio antes da troca temporária, revogação, recuperação Gmail controlada, token expirado/forjado/reutilizado/concorrente, SDG sem escrita e novo Gestor sem encerramento. A suíte geral de nove testes de navegador passou. Os quatro fluxos privados incluem login, troca, SDG, administração de acessos, recuperação via Gmail fictício e logout; seis larguras e axe na tela de senha. Uso do token em fragmento também foi exercitado quando a tela de login já estava aberta.
+
+Scrypt (`N=16384,r=8,p=5`) validado no runtime workerd local e em Worker efêmero remoto sem banco ou segredos: HTTP 200, senha correta aceita, incorreta rejeitada; Worker removido após o teste. Backup privado pré-migração 0007 criptografado com DPAPI, restaurado em SQLite em memória e validado (integridade/FK ok, zero demandas). Detalhes em [19_SENHAS_E_USUARIOS.md](19_SENHAS_E_USUARIOS.md).
+
+Gmail real ainda não foi configurado nem usado. Login com MFA pessoal e recebimento efetivo dos links não foram homologados; a API informa a pendência de configuração quando aplicável. Os testes exercitam controles específicos; não foi produzido um novo scan Codex Security selado desta versão.
+
 ## Complemento mais recente: conta Gmail, planilhas e log
 
 62 testes Node/SQLite e 12 cenários de navegador locais passaram (9 gerais + 3 privados). Incluem troca entre contas Google fictícias, verificação de perfil/escopos/state/PKCE, cursores e filas separados, 100 cadastros por transação, conflitos/rollback/idempotência, template artifact-tool comprimido lido pelo parser de produção, arquivos hostis e log imutável/redigido com arquivo JSONL/hash conferido. Fluxo de arquivo no navegador valida o download escrito, a prévia sem mudança, a confirmação, a persistência no diretório e a auditoria com ator e correlação. Telas Planilhas/Auditoria foram verificadas nas seis larguras obrigatórias e com axe. Build/TypeScript/Prettier, três validadores Python, auditoria de dependências e dry-run Wrangler passaram.

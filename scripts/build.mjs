@@ -28,6 +28,7 @@ await build({
   format: "esm",
   target: "es2023",
   platform: "browser",
+  external: ["node:crypto", "node:buffer"],
   define: { __ASSETS__: JSON.stringify(assets) },
   minify: true,
 });

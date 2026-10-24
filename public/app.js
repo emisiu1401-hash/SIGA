@@ -87,6 +87,8 @@ async function api(path, options = {}) {
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const result = await r.json();
+  if (r.status === 401 && (path === "/session" || context.passwordLogin))
+    location.assign("/login");
   if (!r.ok)
     throw new Error(result.message || "Não foi possível completar a ação.");
   return result;
@@ -109,6 +111,53 @@ async function downloadFile(path, fallback) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 let auditQuery = new URLSearchParams();
+async function showAccess(target) {
+  const result = await api("/auth/accounts");
+  target.innerHTML = `<section class="operation-panel"><h2>Usuários e acessos</h2><p>1. Cadastre a pessoa com o e-mail real e o perfil. 2. Habilite a conta abaixo. 3. Autorize o mesmo e-mail no Cloudflare Access. A senha temporária aparece uma única vez e deve ser trocada no primeiro acesso.</p><p class="subtext">Executor atua nas suas atribuições. SDG consulta. Gestor administra demandas; somente Emerson encerra definitivamente. Administrador gerencia cadastros e acessos.</p><button id="access-add-person" class="spaced">Cadastrar pessoa e perfil</button><form id="access-form" class="detail-form"><label>Pessoa cadastrada<select name="userId" required><option value="">Selecione</option>${directory.people
+    .filter((p) => p.active)
+    .map(
+      (p) =>
+        `<option value="${e(p.id)}">${e(p.name)} · ${e(p.roles.join(", "))}</option>`,
+    )
+    .join(
+      "",
+    )}</select></label><label>Nome de usuário<input name="username" required minlength="3" maxlength="60" pattern="[a-z0-9][a-z0-9._-]{2,59}" autocomplete="off" placeholder="Ex.: nome.sobrenome"></label><p class="subtext">Reemitir a senha encerra as sessões e invalida links antigos da pessoa. A senha anterior deixa de funcionar.</p><button type="submit" class="primary">Habilitar acesso / emitir senha temporária</button></form><div id="access-result" role="status"></div><h3 class="spaced">Contas habilitadas</h3>${result.accounts.map((a) => `<div class="mail-item"><strong>${e(a.full_name)} · ${e(a.username)}</strong><p>${e(a.email)} · ${a.enabled && a.active ? "Habilitado" : "Desabilitado"} · ${a.must_change ? "Troca inicial obrigatória" : "Senha pessoal definida"}</p><p class="subtext">${result.accessEmails.includes(a.email.toLowerCase()) ? "E-mail incluído na lista de acesso da aplicação; a política Cloudflare também precisa autorizar." : "Aguardando inclusão do e-mail no Cloudflare Access e na lista autorizada da aplicação."}</p>${a.user_id !== "u-gestor" && a.user_id !== context.actor.id && a.enabled ? `<button data-disable-access="${e(a.user_id)}">Desabilitar acesso</button>` : ""}</div>`).join("") || "<p>Nenhuma conta com senha habilitada.</p>"}</section>`;
+  $("#access-add-person").onclick = () => personForm();
+  $("#access-form").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const form = ev.currentTarget;
+    const button = ev.currentTarget.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      const input = Object.fromEntries(new FormData(ev.currentTarget)),
+        r = await api("/auth/accounts", { method: "POST", body: input });
+      $("#access-result").innerHTML =
+        `<p class="spaced">Guarde e entregue a credencial por canal restrito. Ela não será exibida novamente após sair desta tela.</p><pre class="temporary-access">Usuário: ${e(r.username)}\nSenha temporária: ${e(r.temporaryPassword)}\nE-mail vinculado: ${e(r.email)}</pre><p>A troca será obrigatória no primeiro acesso. A identidade Cloudflare precisa corresponder ao e-mail cadastrado.</p>`;
+      form.reset();
+    } catch (error) {
+      $("#access-result").textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
+  $$("[data-disable-access]").forEach(
+    (button) =>
+      (button.onclick = async () => {
+        button.disabled = true;
+        try {
+          await api("/auth/accounts/disable", {
+            method: "POST",
+            body: { userId: button.dataset.disableAccess },
+          });
+          await loadOperation();
+          toast("Acesso desabilitado e sessões encerradas.");
+        } catch (error) {
+          toast(error.message);
+          button.disabled = false;
+        }
+      }),
+  );
+}
 async function showAudit(target) {
   const r = await api("/audit/log?" + auditQuery);
   target.innerHTML = `<section class="operation-panel"><h2>Log detalhado</h2><p>Horários em São Paulo; instante UTC e identificador da requisição nos detalhes. Registros preservados sem edição pelo aplicativo.</p><form id="audit-filter" class="detail-form"><label>Usuário<select name="actor"><option value="">Todos</option>${directory.people.map((p) => `<option value="${e(p.id)}" ${auditQuery.get("actor") === p.id ? "selected" : ""}>${e(p.name)}</option>`).join("")}</select></label><label>Ação<input name="action" maxlength="100" value="${e(auditQuery.get("action") || "")}" placeholder="Ex.: SPREADSHEET_APPLIED"></label><label>Resultado<select name="outcome"><option value="">Todos</option><option ${auditQuery.get("outcome") === "SUCESSO" ? "selected" : ""}>SUCESSO</option><option ${auditQuery.get("outcome") === "NEGADO" ? "selected" : ""}>NEGADO</option></select></label><label>Desde (São Paulo)<input type="datetime-local" name="from" value="${e(auditQuery.get("from") ? new Date(new Date(auditQuery.get("from")).getTime() - 10800000).toISOString().slice(0, 16) : "")}"></label><label>Até (São Paulo)<input type="datetime-local" name="to" value="${e(auditQuery.get("to") ? new Date(new Date(auditQuery.get("to")).getTime() - 10800000).toISOString().slice(0, 16) : "")}"></label><button type="submit">Filtrar log</button></form><button id="audit-download" class="spaced">Baixar arquivo de log (.jsonl)</button><p class="subtext">${r.total} registro(s). Exportação limitada a 5.000 por recorte; o arquivo informa eventual truncamento.</p><div id="audit-entries">${r.entries.map((ev) => `<details class="mail-item"><summary><strong>${e(ev.action)}</strong> · ${e(ev.outcome)}<span class="subtext">${e(ev.actor_name)} · ${e(new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "medium" }).format(new Date(ev.occurred_at)))}</span></summary><p>Usuário: ${e(ev.actor_id || "não autenticado")} · ${e(ev.roles.join(", "))}</p><p>UTC: ${e(ev.occurred_at)} · Origem: ${e(ev.source)}</p><p>Recurso: ${e(ev.resource)} · HTTP: ${e(ev.http_status || "—")} · ${e(ev.duration_ms ?? "—")} ms</p><p>Requisição: ${e(ev.request_id)}</p><pre>${e(JSON.stringify(ev.details, null, 2))}</pre></details>`).join("") || "<p>Nenhum registro neste recorte.</p>"}</div><div class="audit-pages"><button id="audit-prev" ${r.page <= 1 ? "disabled" : ""}>Anterior</button><span>Página ${r.page} de ${Math.max(1, Math.ceil(r.total / r.size))}</span><button id="audit-next" ${r.page * r.size >= r.total ? "disabled" : ""}>Próxima</button></div></section>`;
@@ -693,9 +742,7 @@ async function openDemand(id) {
     );
     const person = (id) => result.people.find((p) => p.id === id)?.name || id;
     const canManage =
-        context.authenticated &&
-        context.actor.id === s.managerId &&
-        context.actor.roles.includes("GESTOR"),
+        context.authenticated && context.actor.roles.includes("GESTOR"),
       canExecute =
         context.authenticated &&
         s.assignments.some(
@@ -736,7 +783,7 @@ async function openDemand(id) {
     showDialog(
       s.title,
       `${badge(s.priority)}<dl class="detail-grid">${items.map(([label, value]) => `<div><dt>${label}</dt><dd>${e(value)}</dd></div>`).join("")}</dl><p class="detail-description">${e(s.description)}</p>${linkSei(s.processUrl)}${s.processUrl ? '<p class="subtext">A validação é técnica do endereço. O acesso depende das permissões do SEI.</p>' : ""}${canManage && !final ? `<div class="form-actions"><button id="assign-action">Atribuir responsável</button><button id="priority-action">Prioridade</button><button id="process-action">Processo SEI</button><button id="archive-action">${s.status === "NOVA_TRIAGEM" ? "Arquivar" : "Cancelar demanda"}</button></div>` : ""}${canExecute && !final ? '<div class="form-actions"><button id="accept-action">Aceitar / previsão</button><button id="extension-action">Pedir prorrogação</button><button id="transfer-action">Transferência / apoio</button><button id="complete-action">Declarar conclusão</button><button id="time-action">Apontar tempo</button><button id="block-action">Impedimento</button></div>' : ""}
- <section class="detail-section"><h3>Solicitações e decisões</h3>${s.requests.length ? s.requests.map((r) => `<div class="request-block"><strong>${e(r.type.replaceAll("_", " "))}</strong> <span class="badge">${e(r.status.replaceAll("_", " "))}</span><p>${e(r.reason || "Justificativa pendente")}${r.date ? " · Nova data: " + formatDate(r.date) : ""}${r.title ? " · " + e(r.title) : ""}</p>${r.conditions ? "<p>Ressalvas: " + e(r.conditions) + "</p>" : ""}${canManage && ["AGUARDANDO_GESTOR", "AGUARDANDO_CONDICOES"].includes(r.status) ? `<div class="form-actions"><button class="primary" data-decide="${e(r.id)}" data-decision="APPROVE">Autorizar sem ressalvas</button><button data-decide="${e(r.id)}" data-decision="CONDITIONAL">Com ressalvas</button><button data-decide="${e(r.id)}" data-decision="REJECT">Indeferir</button><button data-decide="${e(r.id)}" data-decision="CLARIFY">Esclarecer</button></div>` : ""}${canExecute && r.status === "INCOMPLETA" ? `<button data-complete-request="${e(r.id)}">Complementar pedido</button>` : ""}</div>`).join("") : '<p class="subtext">Nenhuma solicitação registrada.</p>'}</section>
+ <section class="detail-section"><h3>Solicitações e decisões</h3>${s.requests.length ? s.requests.map((r) => `<div class="request-block"><strong>${e(r.type.replaceAll("_", " "))}</strong> <span class="badge">${e(r.status.replaceAll("_", " "))}</span><p>${e(r.reason || "Justificativa pendente")}${r.date ? " · Nova data: " + formatDate(r.date) : ""}${r.title ? " · " + e(r.title) : ""}</p>${r.conditions ? "<p>Ressalvas: " + e(r.conditions) + "</p>" : ""}${canManage && (r.type !== "CONCLUSAO" || context.actor.id === "u-gestor") && ["AGUARDANDO_GESTOR", "AGUARDANDO_CONDICOES"].includes(r.status) ? `<div class="form-actions"><button class="primary" data-decide="${e(r.id)}" data-decision="APPROVE">Autorizar sem ressalvas</button><button data-decide="${e(r.id)}" data-decision="CONDITIONAL">Com ressalvas</button><button data-decide="${e(r.id)}" data-decision="REJECT">Indeferir</button><button data-decide="${e(r.id)}" data-decision="CLARIFY">Esclarecer</button></div>` : ""}${canExecute && r.status === "INCOMPLETA" ? `<button data-complete-request="${e(r.id)}">Complementar pedido</button>` : ""}</div>`).join("") : '<p class="subtext">Nenhuma solicitação registrada.</p>'}</section>
  <section class="detail-section"><h3>Atribuições e snapshots</h3>${s.assignments.map((a) => `<p class="spaced"><strong>${e(person(a.personId))}</strong> · ${e(a.department)} · ${e(a.status.replaceAll("_", " "))}<span class="subtext">Original: ${formatDate(a.originalDue)} · vigente: ${formatDate(a.due)} · revisão ${a.dueRevision}</span></p>`).join("") || "<p>Sem atribuição confirmada.</p>"}</section><section class="detail-section"><h3>Demandas relacionadas</h3>${result.parent ? `<button class="demand-link" data-related="${e(result.parent.id)}">↑ Origem: ${e(result.parent.code)} — ${e(result.parent.title)}</button>` : ""}${result.children.map((c) => `<p><button class="demand-link" data-related="${e(c.id)}">↳ ${e(c.code)} — ${e(c.title)}</button><span class="subtext">${e(states[c.status])}</span></p>`).join("")}${!result.parent && !result.children.length ? '<p class="subtext">Sem relação pai/filha.</p>' : ""}</section><section class="detail-section"><h3>Histórico auditável</h3><ol class="timeline">${[
    ...s.events,
  ]
@@ -912,12 +959,29 @@ function loginDialog() {
   });
 }
 $("#login-button").addEventListener("click", () =>
-  context.authenticated ? logout() : loginDialog(),
+  context.deployment === "demo"
+    ? location.assign("https://siga-private.emisiu1401.workers.dev/login")
+    : context.authenticated
+      ? logout()
+      : loginDialog(),
 );
 $("#account-button").addEventListener("click", () =>
-  context.authenticated ? logout() : loginDialog(),
+  context.deployment === "demo"
+    ? location.assign("https://siga-private.emisiu1401.workers.dev/login")
+    : context.authenticated
+      ? logout()
+      : loginDialog(),
 );
 async function logout() {
+  if (context.passwordLogin) {
+    try {
+      await api("/logout", { method: "POST", body: {} });
+      location.assign("/login");
+    } catch (error) {
+      toast(error.message);
+    }
+    return;
+  }
   if (context.accessProtected) {
     location.assign("/cdn-cgi/access/logout");
     return;
@@ -969,7 +1033,7 @@ function personForm(person) {
   };
   showDialog(
     person ? "Editar cadastro" : "Cadastrar servidor",
-    `<form id="person-form" class="detail-form">${formField("Nome completo", "name", "text", p.name)}${formField("E-mail autorizado", "email", "email", p.email)}<label>Seção<select name="department">${["SLC", "SAP", "SME", "AE"].map((d) => `<option ${d === p.department ? "selected" : ""}>${d}</option>`).join("")}</select></label><label>Perfil<select name="role">${["EXECUTOR", "SDG_LEITOR", "ADMIN"].map((r) => `<option ${p.roles.includes(r) ? "selected" : ""}>${r}</option>`).join("")}</select></label><label>Cadastro<select name="active"><option value="true">Ativo</option><option value="false" ${p.active ? "" : "selected"}>Inativo</option></select></label><p>A lotação será registrada com histórico. Os snapshots anteriores permanecem preservados.</p><button type="submit" class="primary">Salvar cadastro</button><div id="person-error" class="form-error" hidden></div></form>`,
+    `<form id="person-form" class="detail-form">${formField("Nome completo", "name", "text", p.name)}${formField("E-mail autorizado", "email", "email", p.email)}<label>Seção<select name="department">${["SLC", "SAP", "SME", "AE"].map((d) => `<option ${d === p.department ? "selected" : ""}>${d}</option>`).join("")}</select></label><label>Perfil<select name="role">${["EXECUTOR", "GESTOR", "SDG_LEITOR", "ADMIN"].map((r) => `<option ${p.roles.includes(r) ? "selected" : ""}>${r}</option>`).join("")}</select></label><label>Cadastro<select name="active"><option value="true">Ativo</option><option value="false" ${p.active ? "" : "selected"}>Inativo</option></select></label><p>A lotação será registrada com histórico. Os snapshots anteriores permanecem preservados.</p><button type="submit" class="primary">Salvar cadastro</button><div id="person-error" class="form-error" hidden></div></form>`,
   );
   $("#person-form").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -991,6 +1055,7 @@ function personForm(person) {
       closeDialog();
       personOptions();
       renderTeam();
+      if (view === "access") await loadOperation();
       toast("Cadastro e histórico de lotação atualizados.");
     } catch (error) {
       $("#person-error").textContent = error.message;
@@ -1064,6 +1129,8 @@ async function loadOperation() {
       target.innerHTML = `<div class="operation-panel"><h2>Caixa de saída</h2><p>Mensagens geradas pelo domínio. SIMULADO não significa enviado.</p>${r.outbox.map((m) => `<details class="mail-item"><summary><span class="badge">${e(m.status)}</span>${e(m.subject)}<span class="subtext">${formatTime(m.created_at)}</span></summary><p>Caixa: ${e(m.mailbox_email)}</p><p>Para: ${e(m.recipient_email)}</p>${m.failure_reason ? `<p>Retenção/falha: ${e(m.failure_reason)}</p>` : ""}<pre>${e(m.body_text)}</pre></details>`).join("") || "<p>Sem mensagens geradas.</p>"}</div><div class="operation-panel"><h2>Mensagens para revisão</h2><p>Entradas ambíguas, falhas de extração ou aprovações que exigem corroboração humana.</p>${r.reviews.map((m) => `<details class="mail-item"><summary>${e(m.subject || "Sem assunto")}</summary><p>Caixa: ${e(m.mailbox_email)}</p><p>${e(m.reason)}</p><pre>${e(m.fresh_text)}</pre>${context.actor.roles.includes("GESTOR") ? `<button data-triage-review="${e(m.id)}">Registrar como nova demanda para triagem</button>` : ""}</details>`).join("") || "<p>Nenhuma mensagem aguardando revisão.</p>"}</div>`;
     } else if (view === "audit") {
       await showAudit(target);
+    } else if (view === "access") {
+      await showAccess(target);
     } else if (view === "sheets") {
       showSheets(target);
     } else if (view === "simulator") {
@@ -1233,6 +1300,10 @@ const views = {
     "Trilha de auditoria",
     "Decisões, mudanças de estado e eventos de segurança.",
   ],
+  access: [
+    "Usuários e acessos",
+    "Cadastre pessoas, habilite o acesso e escolha os perfis.",
+  ],
   settings: [
     "Configurações",
     "Conexões, motor de IA e parâmetros de operação.",
@@ -1253,6 +1324,7 @@ function setView() {
     "audit",
     "settings",
     "sheets",
+    "access",
   ].includes(view);
   $("#workspace").hidden = operation;
   $("#operation-content").hidden = !operation;
@@ -1280,10 +1352,17 @@ $("#definitions").addEventListener("click", () =>
 async function initialize() {
   try {
     context = await api("/session");
+    if (context.mustChangePassword) {
+      location.assign("/login?change=1");
+      return;
+    }
+    $("#change-password-link").hidden = !context.passwordLogin;
+    $("#login-button").parentElement.append($("#change-password-link"));
     const demo = context.deployment === "demo";
     const privateEnvironment = context.deployment === "private";
+    $('[data-view="access"]').hidden = !context.actor.roles.includes("ADMIN");
     $('[data-view="simulator"]').hidden = privateEnvironment || demo;
-    $("#login-button").hidden = demo;
+    $("#login-button").hidden = false;
     $("#account-button").disabled = demo;
     if (demo)
       $("#notice").textContent =
@@ -1315,7 +1394,9 @@ async function initialize() {
     $("#new-demand").hidden = !context.actor.roles.includes("GESTOR");
     $("#login-button").innerHTML = context.authenticated
       ? "Sair da sessão"
-      : 'Entrar na gestão <span aria-hidden="true">↗</span>';
+      : demo
+        ? "Entrar no ambiente privado ↗"
+        : 'Entrar na gestão <span aria-hidden="true">↗</span>';
     $("#account-name").innerHTML = context.authenticated
       ? e(context.actor.name) +
         "<small>" +

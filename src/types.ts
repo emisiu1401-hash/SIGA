@@ -144,6 +144,8 @@ export type RuntimeEnv = {
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
   ACCESS_ALLOWED_EMAILS?: string;
+  AUTH_MODE?: "access_password";
+  APP_ORIGIN?: string;
   SECRET_ENCRYPTION_KEY?: string;
   SIMULATION_MODE: string;
   PUBLIC_DEMO: string;

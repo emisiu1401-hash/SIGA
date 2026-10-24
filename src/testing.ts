@@ -10,3 +10,4 @@ export * from "./privacy.ts";
 export * from "./xlsx.ts";
 export * from "./spreadsheets.ts";
 export * from "./audit.ts";
+export * from "./passwords.ts";

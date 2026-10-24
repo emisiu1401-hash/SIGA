@@ -3,6 +3,7 @@ import { assert } from "./domain.ts";
 import { Repository } from "./repository.ts";
 import type { Person, RuntimeEnv } from "./types.ts";
 import type { AccessIdentity } from "./privacy.ts";
+import { passwordMode, passwordSession } from "./passwords.ts";
 
 const encoder = new TextEncoder();
 export async function constantEqual(a: string, b: string) {
@@ -21,7 +22,14 @@ export async function session(
   env: RuntimeEnv,
   repo: Repository,
   access?: AccessIdentity,
-): Promise<{ actor: Person; csrf: string; authenticated: boolean }> {
+): Promise<{
+  actor: Person;
+  csrf: string;
+  authenticated: boolean;
+  mustChangePassword?: boolean;
+  username?: string;
+}> {
+  if (passwordMode(env)) return passwordSession(request, repo, access);
   if (env.DEPLOYMENT_MODE === "private" || env.ACCESS_REQUIRED === "true") {
     assert(access, "ACCESS", "Autenticação privada obrigatória.", 403);
     const actor = (await repo.people()).find(

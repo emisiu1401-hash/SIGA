@@ -11,7 +11,7 @@ No ambiente privado, abra **Planilhas Excel**. Baixe o template vazio para conhe
 
 Prazos, responsabilidades, transferência, aceite, situação e encerramento seguem os fluxos próprios. Só Emerson/GESTOR atualiza demandas; ADMIN atualiza pessoas. Cadastros do gestor e sistema são protegidos. ADMIN/GESTOR podem exportar. SDG/EXECUTOR não recebem acesso a estes arquivos administrativos.
 
-Use prioridades `BAIXA`, `MEDIA`, `ALTA`; seção `SLC`, `SAP`, `SME`, `AE`; ativo `SIM` ou `NÃO`. Papéis ordinários: `EXECUTOR`, `SDG_LEITOR`, `ADMIN`, separados por `;`. Somente URLs HTTPS nos domínios SEI autorizados. Não modifique nomes de colunas, IDs ou versões. No template, amarelo identifica entrada e cinza identifica contexto, sem substituir validação no servidor.
+Use prioridades `BAIXA`, `MEDIA`, `ALTA`; seção `SLC`, `SAP`, `SME`, `AE`; ativo `SIM` ou `NÃO`. Papéis ordinários: `EXECUTOR`, `GESTOR`, `SDG_LEITOR`, `ADMIN`, separados por `;`. Somente URLs HTTPS nos domínios SEI autorizados. Não modifique nomes de colunas, IDs ou versões. No template, amarelo identifica entrada e cinza identifica contexto, sem substituir validação no servidor.
 
 Limites: `.xlsx` até 5 MB, 1.000 linhas preenchidas, 100 mudanças por confirmação. Exportação até 5.000 demandas; se ultrapassar o limite de importação, divida o arquivo preservando cabeçalhos. Há limites adicionais de conteúdo/histórico por lote; reduza o lote quando solicitado. Os arquivos não aceitam fórmulas, macros, objetos incorporados ou pacotes com vínculos externos. ZIP possui limites de expansão, entradas, XML, células e CRC; XML com DTD/entidades externas é rejeitado. Números de versão, duplicatas e campos protegidos são conferidos antes da confirmação.
 

@@ -43,6 +43,17 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Senhas individuais e habilitação de usuários — 24/10/2026
+
+- Pedido: tela de senha, senhas iniciais do titular/SDG, troca, recuperação Gmail e habilitação de Executor/Gestor. E-mail do SDG fornecido diretamente na conversa e usado somente na base/configuração privadas; nenhuma identidade real nova no repositório.
+- Implementação: migration 0007 com credenciais scrypt/sal individual, sessões opacas por hash, links de recuperação por hash/versão/expiração. Modo `AUTH_MODE=access_password` acrescenta senha ao Access e MFA existentes, sem aceitar senha de outro e-mail. Troca temporária obrigatória antes dos dados; troca/reset/reemissão/desativação revogam sessões e links.
+- UI: tela `/login`, Esqueci minha senha, Alterar minha senha, acesso privado a partir da demonstração e painel ADMIN de Usuários e acessos. Senhas temporárias exibidas uma vez; consultas não retornam hashes. Autorização de e-mails na Cloudflare permanece explícita, independente do cadastro de perfil.
+- Domínio: habilitação de gestores adicionais autorizada pelo pedido atual; permite gestão compartilhada, sem delegação de encerramento. `u-gestor` continua o único autorizador do encerramento definitivo; testes cobrem a tentativa por novo Gestor.
+- Recuperação: envio Gmail separado da outbox comum para não persistir links secretos. Verifica remetente ativo, escopos/configuração e identidade Access. Cliente OAuth Google continua pendente; o formulário informa isso sem prometer entrega. Nenhum e-mail real enviado.
+- Testes: 73 casos Node/SQLite; nove cenários gerais de navegador; quatro fluxos privados, incluindo novo fluxo titular/SDG, troca inicial, cadastro/habilitação, recuperação com Gmail fictício, limpeza do fragmento e logout. Seis larguras e axe na tela de senha. Corrigidos `currentTarget` após await e rolagem interna do menu com mais opções. Scrypt validado no workerd local e em Worker temporário publicado sem dados/segredos, removido após HTTP 200 (correta aceita/incorreta rejeitada).
+- Backup anterior: export privado restaurado em SQLite em memória, integridade ok/FK sem erro, zero demandas; cópia DPAPI com roundtrip em `.local/private-before-passwords.sql.dpapi`. Não houve restauração sobre o banco ativo.
+- Limites: login pessoal e inscrição de segundo fator dependem dos usuários. Gmail real depende de OAuth próprio e ativação; não houve teste de entrega real. O relatório Codex Security anterior não cobre automaticamente esta versão; foram realizados testes direcionados de segurança. Não é certificação WCAG nem homologação institucional.
+
 ### Troca Gmail, Excel e log — 24/10/2026
 
 - Resultado: conta de comunicação configurável em Configurações, independente do login; troca OAuth com PKCE/state, perfil validado, pausa, filas retidas e deduplicação por caixa. Sem cliente Google configurado, o formulário explica a pendência e não inicia autorização incompleta.

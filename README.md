@@ -20,6 +20,7 @@ Aplicação baseada na especificação v2.3: núcleo de regras determinísticas,
 - Adaptador Gmail OAuth, cursor, recuperação, deduplicação e limites MIME. **Entradas reais vão à revisão humana; respostas reais não aprovam mudanças automaticamente nesta versão.**
 - Troca de conta Google em Configurações, com conferência da identidade, pausa e retenção da fila anterior. [Configuração inicial e uso](docs/17_TROCA_DE_CONTA_GMAIL.md).
 - Importação/exportação Excel com template, validação, prévia, confirmação e versões; log persistente com filtros e download JSONL. [Como usar](docs/18_PLANILHAS_E_LOG.md).
+- Senha individual após Cloudflare Access, troca inicial obrigatória, recuperação via Gmail e administração de acessos por perfil. [Senhas e usuários](docs/19_SENHAS_E_USUARIOS.md).
 
 ## Executar
 
@@ -64,7 +65,7 @@ Os testes usam SQLite real e provedores controlados. O e2e cria base isolada em 
 | `public` | Interface embutida no Worker, sem assets remotos |
 | `scripts` | Build, servidor Node e provisionamento GitHub |
 | `tests/app`, `tests/e2e` | Testes do produto e usabilidade |
-| `db/migrations` | 0001–0003 preservadas e extensões 0004–0006 |
+| `db/migrations` | 0001–0003 preservadas e extensões 0004–0007 |
 
 ## Cloudflare e integrações
 

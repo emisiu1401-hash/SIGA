@@ -133,9 +133,9 @@ const editable = (s: Aggregate) =>
   );
 const manager = (s: Aggregate, p: Person) =>
   assert(
-    p.active && p.id === s.managerId && p.roles.includes("GESTOR"),
+    p.active && p.roles.includes("GESTOR"),
     "FORBIDDEN",
-    "Somente Emerson, no papel de gestor, pode autorizar esta ação.",
+    "Somente um gestor habilitado pode autorizar esta ação.",
     403,
   );
 const executor = (s: Aggregate, p: Person) =>
@@ -740,6 +740,12 @@ export function transition(
           );
         }
         if (r.type === "CONCLUSAO") {
+          assert(
+            actor.id === "u-gestor",
+            "FORBIDDEN",
+            "Somente Emerson autoriza o encerramento definitivo.",
+            403,
+          );
           assert(
             s.status === "AGUARDANDO_VALIDACAO",
             "STATE",

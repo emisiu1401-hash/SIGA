@@ -71,9 +71,11 @@ export class Repository {
     );
     assert(
       p.roles.length &&
-        p.roles.every((r) => ["EXECUTOR", "SDG_LEITOR", "ADMIN"].includes(r)),
+        p.roles.every((r) =>
+          ["EXECUTOR", "SDG_LEITOR", "ADMIN", "GESTOR"].includes(r),
+        ),
       "ROLES",
-      "Papéis inválidos. O gestor não pode ser criado por cadastro ordinário.",
+      "Papéis inválidos. Escolha Executor, Gestor, SDG ou Administrador.",
     );
     assert(
       p.id !== "u-gestor" && p.id !== "system",
@@ -81,6 +83,13 @@ export class Repository {
       "Cadastro protegido.",
     );
     const statements = [
+      this.db
+        .prepare("DELETE FROM password_sessions WHERE user_id=?")
+        .bind(p.id),
+      this.db.prepare("DELETE FROM password_links WHERE user_id=?").bind(p.id),
+      this.db
+        .prepare("UPDATE login_accounts SET version=version+1 WHERE user_id=?")
+        .bind(p.id),
       this.db
         .prepare(
           `INSERT INTO users(id,full_name,email,active,created_at,department_id) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name,email=excluded.email,active=excluded.active,department_id=excluded.department_id,revision=users.revision+1`,
