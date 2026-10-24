@@ -43,6 +43,14 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Configuração Gmail compreensível — 24/10/2026
+
+- Relato: administrador salvou token de IA, encontrou "Aguardando OAuth" e não identificou como habilitar o e-mail.
+- Diagnóstico atual confirmado na Cloudflare: GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET ausentes; retorno OAuth configurado; plataforma em simulação, IA mock e envio desativado. Nenhuma caixa real conectada pelo aplicativo.
+- UI: estado explícito de configuração inicial pendente, botão Configurar Gmail (passo a passo), instruções Google/Cloudflare, retorno exato com cópia, ação de reconsulta e formulário de autorização disponível apenas após os pré-requisitos. Sincronização desabilitada com explicação quando não pode operar. Token salvo também informa se o motor continua em simulação.
+- Verificação: novo teste de navegador exercita guia/cópia/foco/restauração, seis larguras e axe sem chamadas externas nem alterações de conexão; captura fora do repositório. Os seis fluxos privados passaram, incluindo conexão/troca Google fictícia, senhas, quarentena e novo guia. TypeScript, formato e guarda de segredos passaram. Browser plugin especializado não disponível; usado Playwright regular com fixtures locais e Access assinado.
+- Sem alteração de banco, senha, escopo OAuth ou ativação real. O titular ainda precisa criar/configurar o cliente Google e dar consentimento na conta. Credenciais não foram solicitadas na conversa; são armazenadas como Secrets na Cloudflare.
+
 ### Cookie Access e loop após MFA — 24/10/2026
 
 - Relato: usuário concluiu inscrição no Google Authenticator e recebeu ERR_TOO_MANY_REDIRECTS ao abrir SIGA.

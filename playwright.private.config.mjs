@@ -17,7 +17,7 @@ export default defineConfig({
       testMatch: "email-security.spec.mjs",
       use: { baseURL: "http://127.0.0.1:8793" },
     },
-    { name: "private", testMatch: /(?:privacy|sheets)\.spec\.mjs/ },
+    { name: "private", testMatch: /(?:privacy|sheets|settings)\.spec\.mjs/ },
     {
       name: "gmail-oauth",
       testMatch: "gmail.spec.mjs",

@@ -2,6 +2,12 @@
 
 O administrador pode trocar a caixa em **Configurações → Conta Google das comunicações**. A conta usada para receber/enviar mensagens é independente da identidade de acesso ao SIGA. Trocar a caixa não troca o proprietário nem os papéis do sistema.
 
+## O que fazer quando aparece configuração inicial pendente
+
+No SIGA, abra **Configurações → Conta Google das comunicações → Configurar Gmail (passo a passo)**. O botão apresenta as etapas Google/Cloudflare e permite copiar o endereço de retorno correto. A mensagem antiga **Aguardando OAuth** foi substituída: ela escondia que ainda faltam as credenciais do aplicativo, não uma senha do usuário. Enquanto isso, conectar e sincronizar permanecem indisponíveis, com o motivo explicado.
+
+Depois de cadastrar os dois Secrets na Cloudflare, volte ao SIGA e clique em **Já configurei · verificar novamente**. Quando o servidor detectar as credenciais, aparecerá o formulário **Conectar ou trocar conta Google**. A sequência é: (1) preparar o aplicativo Google, (2) autorizar a conta desejada e (3) habilitar a operação real/retomar a conta. Salvar um token de IA não executa essas etapas e não ativa automaticamente consumo pago de IA.
+
 ## Configuração inicial, uma vez
 
 O Worker precisa de um cliente OAuth próprio. O conector Gmail desta conversa não entrega suas credenciais ao aplicativo. Crie um projeto no Google Cloud, habilite Gmail API e configure o consentimento OAuth conforme as políticas da organização. Para um aplicativo em teste, inclua as contas autorizadas como usuários de teste; contas institucionais podem depender de aprovação do administrador Google Workspace. Consulte a documentação oficial de [OAuth para aplicações web](https://developers.google.com/identity/protocols/oauth2/web-server).
