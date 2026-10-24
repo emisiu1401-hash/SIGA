@@ -11,12 +11,15 @@
     "build": "node scripts/build.mjs",
     "test": "node --test tests/app/*.test.mjs",
     "test:e2e": "playwright test",
+    "test:e2e:private": "playwright test --config playwright.private.config.mjs",
     "check": "tsc --noEmit",
     "deploy": "wrangler deploy",
+    "deploy:private": "wrangler deploy --config wrangler.private.jsonc",
+    "security:secrets": "node scripts/check-secrets.mjs",
     "db:migrate": "wrangler d1 migrations apply siga --local",
     "db:migrate:remote": "wrangler d1 migrations apply siga --remote",
-    "format": "prettier --write \"src/**/*.{ts,json}\" \"public/*.{js,css,html}\" \"scripts/*.mjs\" \"tests/app/*.mjs\" \"tests/e2e/*.mjs\" playwright.config.mjs package.json tsconfig.json wrangler.jsonc pnpm-workspace.yaml .github/workflows/ci.yml",
-    "format:check": "prettier --check \"src/**/*.{ts,json}\" \"public/*.{js,css,html}\" \"scripts/*.mjs\" \"tests/app/*.mjs\" \"tests/e2e/*.mjs\" playwright.config.mjs package.json tsconfig.json wrangler.jsonc pnpm-workspace.yaml .github/workflows/ci.yml"
+    "format": "prettier --write \"src/**/*.{ts,json}\" \"public/*.{js,css,html}\" \"scripts/*.mjs\" \"tests/app/*.mjs\" \"tests/e2e/*.mjs\" playwright.config.mjs package.json tsconfig.json wrangler.jsonc pnpm-workspace.yaml .github/workflows/ci.yml \"tests/e2e-private/*.mjs\" tests/private-server.mjs playwright.private.config.mjs wrangler.private.jsonc",
+    "format:check": "prettier --check \"src/**/*.{ts,json}\" \"public/*.{js,css,html}\" \"scripts/*.mjs\" \"tests/app/*.mjs\" \"tests/e2e/*.mjs\" playwright.config.mjs package.json tsconfig.json wrangler.jsonc pnpm-workspace.yaml .github/workflows/ci.yml \"tests/e2e-private/*.mjs\" tests/private-server.mjs playwright.private.config.mjs wrangler.private.jsonc"
   },
   "dependencies": {
     "ajv": "^8.17.1",

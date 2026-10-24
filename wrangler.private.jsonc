@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "siga-private",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-10-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "siga-private",
+      "database_id": "e72eaf8c-0d46-4042-bfea-00ade0c2f60f",
+      "migrations_dir": "db/migrations",
+    },
+  ],
+  "vars": {
+    "DEPLOYMENT_MODE": "private",
+    "PUBLIC_DEMO": "false",
+    "ACCESS_REQUIRED": "true",
+    "OUTBOX_MAILBOX_ID": "private-mailbox",
+    "ACCESS_TEAM_DOMAIN": "https://siga-emisiu1401.cloudflareaccess.com",
+    "ACCESS_AUD": "0a7189f9fecdf1760f4aa4da7bb05f7126f729bda90c88bfaa4f6ab5d28f9431",
+    "SIMULATION_MODE": "true",
+    "AI_PROVIDER": "mock",
+    "AI_MODEL": "gpt-4.1-mini",
+    "EMAIL_SEND_ENABLED": "false",
+    "SEI_ALLOWED_HOSTS": "sei.tjmsp.jus.br",
+  },
+  "observability": { "enabled": false },
+  "triggers": { "crons": [] },
+}

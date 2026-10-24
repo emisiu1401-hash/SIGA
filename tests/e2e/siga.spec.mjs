@@ -179,6 +179,10 @@ test("WCAG 2.2 AA: verificação automatizada do painel e diálogo", async ({
 test("gestor cria e atribui; executor aceita, pede prorrogação e não se autoaprova", async ({
   browser,
 }) => {
+  test.skip(
+    !!process.env.SIGA_TEST_URL,
+    "Publicação de demonstração é somente consulta; gravações são testadas na base local isolada.",
+  );
   const secrets = credentials();
   const mc = await browser.newContext(),
     ec = await browser.newContext();

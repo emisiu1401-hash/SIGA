@@ -804,6 +804,10 @@ $("#account-button").addEventListener("click", () =>
   context.authenticated ? logout() : loginDialog(),
 );
 async function logout() {
+  if (context.accessProtected) {
+    location.assign("/cdn-cgi/access/logout");
+    return;
+  }
   try {
     await api("/logout", { method: "POST", body: {} });
     location.hash = "dashboard";
@@ -986,7 +990,7 @@ async function loadOperation() {
       });
     } else if (view === "settings") {
       const s = await api("/settings");
-      target.innerHTML = `<div class="operation-grid"><section class="operation-panel"><h2>Conexões e ambiente</h2><p>Credenciais ficam no servidor. Nenhum segredo é devolvido ao navegador.</p><div class="settings-row"><span>Cloudflare Worker + D1<small>Aplicação e persistência transacional</small></span><strong>Preparado</strong></div><div class="settings-row"><span>Modo de operação<small>Dados fictícios e saída simulada</small></span><strong>${s.simulation ? "SIMULAÇÃO" : "PRODUÇÃO"}</strong></div><div class="settings-row"><span>Motor de IA<small>${e(s.aiProvider)} · ${e(s.aiModel)}</small></span><strong>${s.aiConfigured ? "Token configurado" : "Aguardando token"}</strong></div><div class="settings-row"><span>Gmail API<small>OAuth próprio da aplicação</small></span><strong>${s.gmailConfigured ? "Configurado" : "Aguardando OAuth"}</strong></div><div class="settings-row"><span>Envio real de e-mails</span><strong>${s.sendEnabled ? "Habilitado" : "Desativado"}</strong></div><div class="settings-row"><span>Domínios SEI autorizados</span><strong>${e(s.seiHosts.join(", "))}</strong></div><button id="sync-gmail" class="spaced">Sincronizar Gmail</button></section><section class="operation-panel"><h2>Configurar token de IA</h2><p>Token OpenAI armazenado com criptografia AES-GCM. A chave de criptografia fica nos Secrets do Cloudflare.</p>${context.actor.roles.includes("ADMIN") ? '<form id="ai-form" class="detail-form"><label>Token da API<input type="password" name="token" autocomplete="off" required minlength="20" maxlength="512" placeholder="Insira seu token"></label><button class="primary" type="submit">Salvar token com segurança</button><div id="ai-result" role="status"></div></form>' : "<p>Entre como administrador para configurar o token.</p>"}<p class="spaced">Em simulação, a IA permanece local. A ativação do provedor e o uso institucional devem seguir o guia de operação.</p><h3 class="spaced">Configuração do Gmail</h3><p class="spaced">No Worker, configure os Secrets GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_REFRESH_TOKEN, e a variável MAILBOX_ID com a caixa autorizada. O conector desta conversa não fornece credenciais ao aplicativo.</p></section></div>`;
+      target.innerHTML = `<div class="operation-grid"><section class="operation-panel"><h2>Conexões e ambiente</h2><p>Credenciais ficam no servidor. Nenhum segredo é devolvido ao navegador.</p><div class="settings-row"><span>Cloudflare Worker + D1<small>Aplicação e persistência transacional</small></span><strong>Preparado</strong></div><div class="settings-row"><span>Modo de operação<small>${s.privateEnvironment ? "Ambiente privado; integrações controladas" : "Dados fictícios e saída simulada"}</small></span><strong>${s.privateEnvironment ? "PRIVADO" : "SIMULAÇÃO"}${s.simulation ? " · integrações desativadas" : ""}</strong></div><div class="settings-row"><span>Motor de IA<small>${e(s.aiProvider)} · ${e(s.aiModel)}</small></span><strong>${s.aiConfigured ? "Token configurado" : "Aguardando token"}</strong></div><div class="settings-row"><span>Gmail API<small>OAuth próprio da aplicação</small></span><strong>${s.gmailConfigured ? "Configurado" : "Aguardando OAuth"}</strong></div><div class="settings-row"><span>Envio real de e-mails</span><strong>${s.sendEnabled ? "Habilitado" : "Desativado"}</strong></div><div class="settings-row"><span>Domínios SEI autorizados</span><strong>${e(s.seiHosts.join(", "))}</strong></div><button id="sync-gmail" class="spaced">Sincronizar Gmail</button></section><section class="operation-panel"><h2>Configurar token de IA</h2><p>Token OpenAI criptografado no servidor com chave própria. Para armazenamento direto no cofre, use o Secret AI_API_KEY da Cloudflare.</p>${context.actor.roles.includes("ADMIN") ? '<form id="ai-form" class="detail-form"><label>Token da API<input type="password" name="token" autocomplete="off" required minlength="20" maxlength="512" placeholder="Insira seu token"></label><button class="primary" type="submit">Salvar token com segurança</button><div id="ai-result" role="status"></div></form>' : "<p>Entre como administrador para configurar o token.</p>"}<p class="spaced">Em simulação, a IA permanece local. A ativação do provedor e o uso institucional devem seguir o guia de operação.</p><h3 class="spaced">Configuração do Gmail</h3><p class="spaced">No Worker, configure os Secrets GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_REFRESH_TOKEN, e a variável MAILBOX_ID com a caixa autorizada. O conector desta conversa não fornece credenciais ao aplicativo.</p></section></div>`;
       $("#ai-form")?.addEventListener("submit", async (event) => {
         event.preventDefault();
         const form = event.currentTarget,
@@ -1108,6 +1112,22 @@ $("#definitions").addEventListener("click", () =>
 async function initialize() {
   try {
     context = await api("/session");
+    const demo = context.deployment === "demo";
+    const privateEnvironment = context.deployment === "private";
+    $('[data-view="simulator"]').hidden = privateEnvironment || demo;
+    $("#login-button").hidden = demo;
+    $("#account-button").disabled = demo;
+    if (demo)
+      $("#notice").textContent =
+        "Demonstração pública somente para consulta. Não cadastre dados pessoais ou credenciais aqui.";
+    if (privateEnvironment) {
+      $(".demo-label").textContent = "ACESSO PRIVADO";
+      $(".system-state").lastChild.textContent = "Ambiente privado";
+      $(".sidebar-bottom > p").textContent =
+        "Acesso restrito · integrações controladas";
+      $("#notice").textContent =
+        "Ambiente privado. Gmail e IA só serão usados após configuração e ativação expressa.";
+    }
     directory = await api("/directory");
     personOptions();
     const p = new URLSearchParams(location.search);

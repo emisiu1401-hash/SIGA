@@ -255,6 +255,7 @@ test("triagem de entrada real exige gestor autenticado e não cria duplicata", a
     .run();
   const env = {
     DB: db,
+    DEPLOYMENT_MODE: "development",
     SIMULATION_MODE: "true",
     PUBLIC_DEMO: "true",
     SESSION_SECRET: "dummy-test-session-key-that-is-long-enough",

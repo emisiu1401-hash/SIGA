@@ -11,6 +11,7 @@ export class Repository {
   constructor(
     public db: D1Database,
     public simulation = true,
+    public outboxMailboxId = "mock-mailbox",
   ) {}
   async people(): Promise<Person[]> {
     const { results } = await this.db
@@ -283,7 +284,7 @@ export class Repository {
           )
           .bind(
             o.id,
-            "mock-mailbox",
+            this.outboxMailboxId,
             s.id,
             o.to,
             o.subject,

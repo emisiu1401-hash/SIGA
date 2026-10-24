@@ -82,7 +82,7 @@ Usar contrato `contracts/interpretacao.schema.json`, validação real do JSON re
 - `@tjmsp.jus.br` deve ser domínio exato, case-insensitive, sem sufixos maliciosos. Desconhecido no cadastro pode **originar** triagem, mas não aprovar.
 - Segredos em Cloudflare Secrets/ambiente corporativo, nunca código ou D1 em claro. Escopos Gmail mínimos para leitura e envio, sujeitos a revisão de TI e Google OAuth.
 - Controle por recurso (`demand_id`), papel e ato; dashboard e e-mail compartilham validações. Auditar permissão negada.
-- Variáveis de ambiente: `SIMULATION_MODE=true`, `EMAIL_PROVIDER=mock`, `AI_PROVIDER=mock`, `TIMEZONE=America/Sao_Paulo`, `ALLOWED_SENDER_DOMAIN=tjmsp.jus.br`, `MANAGER_EMAIL=emerson.araujo@tjmsp.jus.br`, `MAILBOX_ID=` (não preencher real por padrão), `EMAIL_SYNC_CRON=`, `DEADLINE_SCAN_CRON=`.
+- Variáveis de ambiente: `SIMULATION_MODE=true`, `EMAIL_PROVIDER=mock`, `AI_PROVIDER=mock`, `TIMEZONE=America/Sao_Paulo`, `ALLOWED_SENDER_DOMAIN=tjmsp.jus.br`, `MANAGER_EMAIL=gestor@exemplo.test`, `MAILBOX_ID=` (não preencher real por padrão), `EMAIL_SYNC_CRON=`, `DEADLINE_SCAN_CRON=`.
 - Sem logs contendo íntegra indiscriminada de corpos e documentos ou dados pessoais; instituir retenção e acesso antes de produção.
 - Backups, migrações reversíveis quando possível, detecção de falhas e trilha de auditoria de autorização.
 

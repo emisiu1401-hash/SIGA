@@ -43,6 +43,19 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Privacidade e separação de ambientes — 24/10/2026
+
+- Autorização: responsável solicitou "Implemente conforme sugerido", após proposta de manter código público e separar demonstração de uso privado.
+- Resultado: demonstração somente leitura, sem Secrets e sem cron; novo Worker e D1 `siga-private`, sem demandas fictícias. Access do Worker inteiro, allowlist do titular e MFA obrigatório. Identidade verificada também no servidor; perfis continuam consultados no cadastro.
+- Isolamento: marcador persistente por banco; configuração ausente/incompatível falha fechada; desenvolvimento somente em loopback; seed e simulador bloqueados no privado. Caixa de saída técnica independente e desativada.
+- Credenciais: novos tokens do painel usam AES-GCM com `SECRET_ENCRYPTION_KEY` independente da sessão; Secret `AI_API_KEY` mantém precedência. Tokens não retornam em GET. Cópias locais iniciais de Secrets e backup criptografadas com Windows DPAPI, com roundtrip conferido; plaintext transitório removido.
+- GitHub: Secret Scanning e Push Protection habilitados pela API. Guarda de segredos em CI e pre-commit verifica também index. Um e-mail institucional original foi substituído por exemplo na versão atual; histórico não reescrito.
+- Arquivos principais: `src/privacy.ts`, `src/auth.ts`, `src/worker.ts`, `src/repository.ts`, `src/interpreter.ts`, `public/app.js`, `public/styles.css`, `wrangler.private.jsonc`, `scripts/check-secrets.mjs`, `.githooks`, testes novos de privacidade, configurações e guia 16.
+- Testes: 39 testes Node/SQLite passaram; fluxo privado em navegador passou (base vazia, criação/persistência, token sem devolução, logout e acessibilidade desktop/mobile). Suíte geral local e demonstração publicada verificam seis larguras e orientação; resultados finais em `15_VALIDACAO_E_LIMITES.md`. TypeScript, formato, validações Python e dry-run passaram. Browser plugin não disponível; usados Playwright/Chrome e fixtures assinadas de Access no teste local.
+- Backup: export do D1 privado restaurado em SQLite isolado; integrity_check e foreign_key_check passaram. Dois usuários técnicos/do titular, três papéis, zero demandas. Não houve restauração sobre o banco ativo.
+- Limites: primeiro acesso com e-mail e fator pessoal do titular não executado por Codex; nenhuma mensagem Gmail lida/enviada e nenhuma chamada paga de IA. Sem rotina automática/retencão institucional de backup, homologação ou certificação de acessibilidade.
+- Implantação externa: SIM, autorizada para os dois ambientes. Gmail/IA reais continuam desligados. Próximo passo humano: primeiro login, inscrição do segundo fator, cadastro da equipe e configuração de credenciais apenas no privado.
+
 Copie esta seção e preencha, sem declarar sucesso por presunção:
 
 ```md

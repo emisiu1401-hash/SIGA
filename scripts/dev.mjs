@@ -1,5 +1,11 @@
 import { createServer } from "node:http";
-import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  appendFileSync,
+} from "node:fs";
 import { randomBytes } from "node:crypto";
 import { parse as parseJsonc } from "jsonc-parser";
 import { LocalD1 } from "./sqlite.mjs";
@@ -11,6 +17,7 @@ mkdirSync(".local", { recursive: true });
 if (!existsSync(".dev.vars")) {
   const config = {
     SESSION_SECRET: randomBytes(48).toString("base64url"),
+    SECRET_ENCRYPTION_KEY: randomBytes(48).toString("base64url"),
     MANAGER_PASSWORD: randomBytes(24).toString("base64url"),
     EXECUTOR_PASSWORD: randomBytes(24).toString("base64url"),
     ADMIN_PASSWORD: randomBytes(24).toString("base64url"),
@@ -35,10 +42,18 @@ const secrets = Object.fromEntries(
     }),
 );
 const db = new LocalD1(process.env.SIGA_DB_PATH || ".local/siga.sqlite");
+if (!secrets.SECRET_ENCRYPTION_KEY) {
+  secrets.SECRET_ENCRYPTION_KEY = randomBytes(48).toString("base64url");
+  appendFileSync(
+    ".dev.vars",
+    "\nSECRET_ENCRYPTION_KEY=" + secrets.SECRET_ENCRYPTION_KEY + "\n",
+  );
+}
 db.migrate();
 const env = {
   ...parseJsonc(readFileSync("wrangler.jsonc", "utf8")).vars,
   ...secrets,
+  DEPLOYMENT_MODE: "development",
   DB: db,
 };
 await seedDemo(new Repository(db));

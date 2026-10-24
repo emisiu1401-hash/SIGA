@@ -33,6 +33,7 @@ const at = "2026-10-23T12:00:00Z",
   clara = demoPeople[4];
 const envFor = (db) => ({
   DB: db,
+  DEPLOYMENT_MODE: "development",
   SIMULATION_MODE: "true",
   PUBLIC_DEMO: "true",
   AI_PROVIDER: "mock",

@@ -1,5 +1,7 @@
 # Operação — 24/10/2026
 
+> **Atualização de privacidade:** o ambiente público abaixo tornou-se somente consulta, sem senhas, tokens ou cron. O uso real foi separado em `siga-private`, protegido por Access e MFA, com banco próprio vazio de demandas. A configuração atual e as instruções de acesso/rotação estão em [16_PRIVACIDADE_E_AMBIENTES.md](16_PRIVACIDADE_E_AMBIENTES.md). As contas e a criptografia derivada de sessão descritas a seguir registram a primeira demonstração; não se aplicam ao novo ambiente privado. Novos tokens do painel usam `SECRET_ENCRYPTION_KEY` independente.
+
 ## Acesso e ambiente
 
 Aplicação: https://siga.emisiu1401.workers.dev. Repositório: https://github.com/emisiu1401-hash/SIGA. Worker e D1: `siga`.

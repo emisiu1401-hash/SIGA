@@ -138,6 +138,12 @@ export type Command = {
 };
 export type RuntimeEnv = {
   DB: D1Database;
+  DEPLOYMENT_MODE?: "demo" | "private" | "development";
+  ACCESS_REQUIRED?: string;
+  ACCESS_TEAM_DOMAIN?: string;
+  ACCESS_AUD?: string;
+  ACCESS_ALLOWED_EMAILS?: string;
+  SECRET_ENCRYPTION_KEY?: string;
   SIMULATION_MODE: string;
   PUBLIC_DEMO: string;
   AI_PROVIDER: string;
@@ -153,4 +159,5 @@ export type RuntimeEnv = {
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_REFRESH_TOKEN?: string;
   MAILBOX_ID?: string;
+  OUTBOX_MAILBOX_ID?: string;
 };

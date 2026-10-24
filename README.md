@@ -2,6 +2,8 @@
 
 [Abrir aplicação](https://siga.emisiu1401.workers.dev) · [Operação](docs/14_OPERACAO_DA_APLICACAO.md) · [Testes e limites](docs/15_VALIDACAO_E_LIMITES.md)
 
+**[SIGA privado](https://siga-private.emisiu1401.workers.dev)**: banco separado, identidade Cloudflare Access e MFA obrigatório. A demonstração pública agora é somente consulta. Credenciais devem ser inseridas exclusivamente no ambiente privado ou nos Secrets do Worker `siga-private`. Veja [privacidade e ambientes](docs/16_PRIVACIDADE_E_AMBIENTES.md).
+
 Aplicação baseada na especificação v2.3: núcleo de regras determinísticas, persistência D1/SQLite, painel executivo responsivo, perfis de acesso, correspondência simulada, fila Gmail e interpretador de IA substituível.
 
 **Publicado como demonstração com dados inteiramente fictícios.** Sem envio real de e-mail, chamada paga de IA ou homologação institucional. A especificação recebida permanece em `docs`, `contracts`, `emails`, `db` e `prototype`; o README original está em `docs/00_PACOTE_ORIGINAL.md`.
@@ -14,7 +16,7 @@ Aplicação baseada na especificação v2.3: núcleo de regras determinísticas,
 - Auditoria imutável de antes/depois, transações, controle de versão e idempotência.
 - Oito KPIs, gráficos, filtros na URL, seções/servidores, dias, detalhes, paginação e cartões no celular.
 - Cadastro/importação CSV, histórico de lotação, correspondência, configurações e simulador de e-mail.
-- Token OpenAI configurável no painel ADMIN, criptografado no servidor; Cloudflare Secret `AI_API_KEY` tem precedência.
+- Token OpenAI configurável no painel ADMIN privado, criptografado no servidor com chave independente; Cloudflare Secret `AI_API_KEY` tem precedência. A demonstração rejeita tokens e gravações.
 - Adaptador Gmail OAuth, cursor, recuperação, deduplicação e limites MIME. **Entradas reais vão à revisão humana; respostas reais não aprovam mudanças automaticamente nesta versão.**
 
 ## Executar
@@ -36,6 +38,8 @@ pnpm check
 pnpm test
 pnpm exec playwright install chromium
 pnpm test:e2e
+pnpm test:e2e:private
+pnpm security:secrets
 python tests/validate_spec.py
 python tests/validate_addendum.py
 python tests/validate_departamentos_v22.py
@@ -62,6 +66,6 @@ Os testes usam SQLite real e provedores controlados. O e2e cria base isolada em 
 
 ## Cloudflare e integrações
 
-Worker `siga` e D1 `siga` estão provisionados; `wrangler.jsonc` referencia o banco criado. O deploy inicial usou o conector Cloudflare. Para publicar depois, autentique o Wrangler, execute `pnpm build`, `pnpm exec wrangler deploy --dry-run` e `pnpm deploy`.
+Workers e bancos independentes: `siga` (demonstração) e `siga-private` (privado). `wrangler.jsonc` publica a demonstração; `wrangler.private.jsonc` publica o privado. O deploy usou o conector Cloudflare. Pela CLI autenticada: `pnpm build`, `pnpm exec wrangler deploy --dry-run --config wrangler.private.jsonc` e `pnpm deploy:private`.
 
 O pedido de 24/10/2026 autorizou a implementação e o repositório **público**, prevalecendo sobre a orientação antiga de privado/gates de incremento. Isso não é homologação institucional. OAuth, identidade institucional e ativação real estão descritos no guia de operação.

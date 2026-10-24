@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { assert } from "./domain.ts";
 import { Repository } from "./repository.ts";
 import type { Person, RuntimeEnv } from "./types.ts";
+import type { AccessIdentity } from "./privacy.ts";
 
 const encoder = new TextEncoder();
 export async function constantEqual(a: string, b: string) {
@@ -19,14 +20,31 @@ export async function session(
   request: Request,
   env: RuntimeEnv,
   repo: Repository,
+  access?: AccessIdentity,
 ): Promise<{ actor: Person; csrf: string; authenticated: boolean }> {
+  if (env.DEPLOYMENT_MODE === "private" || env.ACCESS_REQUIRED === "true") {
+    assert(access, "ACCESS", "Autenticação privada obrigatória.", 403);
+    const actor = (await repo.people()).find(
+      (p) => p.active && p.email.toLowerCase() === access.email,
+    );
+    assert(
+      actor &&
+        actor.roles.some((r) =>
+          ["ADMIN", "GESTOR", "EXECUTOR", "SDG_LEITOR"].includes(r),
+        ),
+      "ACCESS_USER",
+      "Conta sem cadastro ativo no SIGA.",
+      403,
+    );
+    return { actor, csrf: access.csrf, authenticated: true };
+  }
   const cookie = request.headers
     .get("Cookie")
     ?.split(";")
     .map((x) => x.trim())
     .find((x) => x.startsWith("siga_session="))
     ?.slice(13);
-  if (cookie && env.SESSION_SECRET) {
+  if (env.DEPLOYMENT_MODE !== "demo" && cookie && env.SESSION_SECRET) {
     try {
       const { payload } = await jwtVerify(
         cookie,

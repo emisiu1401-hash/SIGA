@@ -43,3 +43,18 @@ O fixture antigo omite prioridade na atribuição. O teste integrado registra **
 Scan `0e0c19af-acf3-4368-99b0-70d32ddca89f`, concluído e selado em 24/10/2026. Não restaram achados reportáveis após as correções e a releitura independente dos controles alterados. A ferramenta registrou o aviso: "Directory contents changed while the scan was running; results were saved for the original snapshot." Portanto, o relatório selado mantém a identidade do snapshot inicial; os regressivos e a revisão de controles documentam as correções posteriores. Não se apresenta esse snapshot como uma certificação imutável da versão final publicada.
 
 A medição retornada pela ferramenta foi 13.728.494 tokens totais, dos quais 13.265.664 de entrada em cache, 13.670.003 de entrada total e 58.491 de saída, considerando 4 chats. É contabilidade de contexto da ferramenta, não estimativa de preço ou de cobrança. O relatório canônico permanece no armazenamento privado do Codex Security, vinculado à conversa.
+# Complemento de privacidade — 24/10/2026
+
+Esta seção registra a evolução posterior à primeira demonstração descrita neste documento.
+
+- **39 testes Node/SQLite passaram**, incluindo tokens Access falsos/expirados, audiência/emissor incorretos, e-mail não autorizado, usuário desativado, RBAC, CSRF/Origin, isolamento dos bancos, demonstração sem gravações, criptografia independente e detecção de segredo no index Git.
+- **9 testes gerais de navegador locais passaram**, com seis larguras 360/390/768/1024/1366/1920, orientação e acessibilidade automatizada.
+- **1 fluxo privado em navegador passou**, em banco fictício em memória: base vazia → identidade individual → cadastro → persistência após recarga → gravação e limpeza do campo de token → GET sem token → logout Access. Desktop 1366 e celular 360 sem overflow e sem violações axe nas verificações executadas. A mensagem de gráfico vazio recebeu correção de contraste.
+- **8 testes de consulta na demonstração publicada passaram**. A gravação foi explicitamente excluída dessa suíte remota porque a demonstração agora é somente leitura; o mesmo fluxo de gravação passou localmente.
+- TypeScript, Prettier, três validações Python da especificação e dry-run Wrangler privado passaram. `pnpm audit --prod`: nenhuma vulnerabilidade conhecida reportada.
+- Cloudflare Access configurado com allowlist de um e-mail e MFA. Requisições anônimas ao HTML e à API privados redirecionaram para o login. O Worker também rejeita JWT inválido se a proteção da borda for removida por engano.
+- Snapshot D1 privado restaurado em SQLite isolado, integridade/chaves estrangeiras válidas. Backup e Secrets locais iniciais protegidos com Windows DPAPI, com decifragem comparada byte a byte; intermediários em texto puro removidos.
+
+**Limites:** o login real do titular com seu segundo fator depende de sua ação pessoal e não foi simulado no ambiente publicado. O fluxo autenticado foi validado com Access assinado fictício somente no servidor local de teste. Não houve leitura/envio Gmail, chamada paga de IA, backup recorrente, restauração no D1 ativo, auditoria exaustiva ou certificação WCAG. DPAPI depende da conta Windows/computador que criou os arquivos. Um e-mail do pacote original permanece no histórico anterior do Git.
+
+Operação atual: [16_PRIVACIDADE_E_AMBIENTES.md](16_PRIVACIDADE_E_AMBIENTES.md).

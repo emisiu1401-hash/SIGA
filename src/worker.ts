@@ -25,6 +25,11 @@ import {
 } from "./interpreter.ts";
 import { synchronizeGmail, dispatchMail } from "./gmail.ts";
 import type { Command, Person, RuntimeEnv } from "./types.ts";
+import {
+  deploymentGuard,
+  deploymentDatabaseGuard,
+  privateAccess,
+} from "./privacy.ts";
 
 const json = (data: unknown, status = 200) => Response.json(data, { status });
 async function body(request: Request) {
@@ -57,11 +62,35 @@ function secured(response: Response) {
   return new Response(response.body, { status: response.status, headers });
 }
 export async function fetchHandler(request: Request, env: RuntimeEnv) {
-  const repo = new Repository(env.DB, env.SIMULATION_MODE === "true");
+  const repo = new Repository(
+    env.DB,
+    env.SIMULATION_MODE === "true",
+    env.OUTBOX_MAILBOX_ID,
+  );
   const url = new URL(request.url);
   const path = url.pathname;
   const now = new Date().toISOString();
   try {
+    deploymentGuard(env);
+    assert(
+      env.DEPLOYMENT_MODE !== "development" ||
+        ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname),
+      "DEPLOYMENT_CONFIG",
+      "Desenvolvimento disponível somente no computador local.",
+      503,
+    );
+    const access = await privateAccess(request, env);
+    await deploymentDatabaseGuard(repo, env);
+    if (
+      env.DEPLOYMENT_MODE === "demo" &&
+      !["GET", "HEAD"].includes(request.method)
+    )
+      assert(
+        false,
+        "DEMO_READ_ONLY",
+        "A demonstração é somente consulta. Use o ambiente privado para cadastrar dados e credenciais.",
+        403,
+      );
     if (!path.startsWith("/api/")) {
       const asset = __ASSETS__[path === "/" ? "/index.html" : path];
       return secured(
@@ -82,6 +111,12 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
       );
     if (path === "/api/login" && request.method === "POST") {
       assert(
+        !access,
+        "ACCESS_LOGIN",
+        "O acesso privado usa sua identidade Cloudflare Access.",
+        403,
+      );
+      assert(
         request.headers.get("Origin") === url.origin,
         "ORIGIN",
         "Origem não autorizada.",
@@ -95,7 +130,9 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
     }
     if (path === "/api/initialize" && request.method === "POST") {
       assert(
-        env.SIMULATION_MODE === "true" &&
+        env.DEPLOYMENT_MODE !== "private" &&
+          env.PUBLIC_DEMO === "true" &&
+          env.SIMULATION_MODE === "true" &&
           env.ADMIN_PASSWORD &&
           (await constantEqual(
             request.headers.get("Authorization") || "",
@@ -108,7 +145,7 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
       await seedDemo(repo);
       return secured(json({ initialized: true }));
     }
-    const current = await session(request, env, repo);
+    const current = await session(request, env, repo, access);
     const actor = current.actor;
     if (request.method !== "GET" && request.method !== "HEAD") {
       assert(
@@ -125,6 +162,8 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
           ...current,
           actor: { id: actor.id, name: actor.name, roles: actor.roles },
           simulation: env.SIMULATION_MODE === "true",
+          deployment: env.DEPLOYMENT_MODE || "development",
+          accessProtected: !!access,
         }),
       );
     if (path === "/api/logout" && request.method === "POST") {
@@ -316,6 +355,10 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
           sendEnabled: env.EMAIL_SEND_ENABLED === "true",
           seiHosts: env.SEI_ALLOWED_HOSTS.split(","),
           cloudflare: true,
+          privateEnvironment: env.DEPLOYMENT_MODE === "private",
+          tokenStorage: env.AI_API_KEY
+            ? "cloudflare-secret"
+            : "encrypted-database",
         }),
       );
     }
@@ -328,7 +371,7 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
       );
       const input = await body(request);
       assert(
-        env.SESSION_SECRET,
+        env.SECRET_ENCRYPTION_KEY && env.SECRET_ENCRYPTION_KEY.length >= 32,
         "SECRET",
         "Chave de criptografia não configurada.",
         503,
@@ -341,12 +384,15 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
         "TOKEN",
         "Informe um token válido.",
       );
-      const encrypted = await encryptSecret(input.token, env.SESSION_SECRET);
+      const encrypted = await encryptSecret(
+        input.token,
+        env.SECRET_ENCRYPTION_KEY,
+      );
       await repo.db
         .prepare(
           "INSERT INTO app_settings(key,value_json,updated_at) VALUES('ai_api_key',?,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at",
         )
-        .bind(JSON.stringify({ encrypted }), now)
+        .bind(JSON.stringify({ encrypted, keyVersion: 2 }), now)
         .run();
       await repo.audit(
         actor.id,
@@ -526,7 +572,9 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
     }
     if (path === "/api/simulate" && request.method === "POST") {
       assert(
-        env.SIMULATION_MODE === "true" && actor.roles.includes("GESTOR"),
+        env.DEPLOYMENT_MODE === "development" &&
+          env.SIMULATION_MODE === "true" &&
+          actor.roles.includes("GESTOR"),
         "FORBIDDEN",
         "Simulador reservado ao gestor no modo de demonstração.",
         403,
@@ -662,7 +710,7 @@ export async function fetchHandler(request: Request, env: RuntimeEnv) {
       message =
         "Conflito de versão ou registro duplicado. Recarregue os dados.";
     }
-    if (status === 403)
+    if (status === 403 && env.DEPLOYMENT_MODE !== "demo")
       try {
         await repo.audit(null, "ACCESS_DENIED", `${request.method} ${path}`);
       } catch {}
@@ -685,7 +733,14 @@ export async function scheduledHandler(
   _controller: ScheduledController,
   env: RuntimeEnv,
 ) {
-  const repo = new Repository(env.DB, env.SIMULATION_MODE === "true");
+  deploymentGuard(env);
+  if (env.DEPLOYMENT_MODE === "demo") return;
+  const repo = new Repository(
+    env.DB,
+    env.SIMULATION_MODE === "true",
+    env.OUTBOX_MAILBOX_ID,
+  );
+  await deploymentDatabaseGuard(repo, env);
   const people = await repo.people();
   const system = people.find((p) => p.id === "system")!;
   const now = new Date().toISOString();

@@ -229,16 +229,13 @@ export async function configuredAi(
     .prepare("SELECT value_json FROM app_settings WHERE key='ai_api_key'")
     .first<{ value_json: string }>();
   if (!stored) return env;
-  assert(
-    env.SESSION_SECRET,
-    "SECRET",
-    "Chave de criptografia indisponível.",
-    503,
-  );
   const data = JSON.parse(stored.value_json);
+  const key =
+    data.keyVersion === 2 ? env.SECRET_ENCRYPTION_KEY : env.SESSION_SECRET;
+  assert(key, "SECRET", "Chave de criptografia indisponível.", 503);
   return {
     ...env,
-    AI_API_KEY: await decryptSecret(data.encrypted, env.SESSION_SECRET),
+    AI_API_KEY: await decryptSecret(data.encrypted, key),
   };
 }
 export async function boundedJson(

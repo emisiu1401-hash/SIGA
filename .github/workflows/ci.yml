@@ -13,6 +13,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm security:secrets
       - run: pnpm format:check
       - run: pnpm build
       - run: pnpm check
@@ -20,6 +21,7 @@ jobs:
       - run: python tests/validate_spec.py && python tests/validate_addendum.py && python tests/validate_departamentos_v22.py
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - run: pnpm test:e2e:private
       - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:
