@@ -1,0 +1,36 @@
+{
+  "name": "siga",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/app/*.test.mjs",
+    "test:e2e": "playwright test",
+    "check": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply siga --local",
+    "db:migrate:remote": "wrangler d1 migrations apply siga --remote",
+    "format": "prettier --write \"src/**/*.{ts,json}\" \"public/*.{js,css,html}\" \"scripts/*.mjs\" \"tests/app/*.mjs\" \"tests/e2e/*.mjs\" playwright.config.mjs package.json tsconfig.json wrangler.jsonc pnpm-workspace.yaml .github/workflows/ci.yml",
+    "format:check": "prettier --check \"src/**/*.{ts,json}\" \"public/*.{js,css,html}\" \"scripts/*.mjs\" \"tests/app/*.mjs\" \"tests/e2e/*.mjs\" playwright.config.mjs package.json tsconfig.json wrangler.jsonc pnpm-workspace.yaml .github/workflows/ci.yml"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "jose": "^6.1.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@cloudflare/workers-types": "latest",
+    "@playwright/test": "^1.56.0",
+    "esbuild": "^0.25.0",
+    "jsonc-parser": "3.3.1",
+    "prettier": "3.6.2",
+    "typescript": "^5.9.0",
+    "wrangler": "^4.45.0"
+  },
+  "packageManager": "pnpm@11.25.0"
+}

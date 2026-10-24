@@ -1,0 +1,71 @@
+{
+  "scenario": "SIMULACAO_SIGA_CALHAS_V2",
+  "synthetic_only": true,
+  "business_timezone": "America/Sao_Paulo",
+  "anchor_date": "2026-10-23",
+  "mailbox": "siga.inbox@exemplo.test",
+  "manager": {"person_id": "u-gestor", "display_name": "Emerson", "email_for_configuration_only": "emerson.araujo@tjmsp.jus.br", "synthetic_email": "gestor@exemplo.test"},
+  "directory": [
+    {"id": "u-gestor", "name": "Emerson", "email": "gestor@exemplo.test", "roles": ["GESTOR","EXECUTOR"]},
+    {"id": "u-gabriela", "name": "Gabriela", "email": "gabriela@exemplo.test", "roles": ["EXECUTOR"]}
+  ],
+  "deliberately_missing_people": ["Manuel", "Viva", "Well"],
+  "note": "Os e-mails @exemplo.test não satisfazem o filtro real de domínio; nos fixtures o atributo trusted_institutional_sender é uma SIMULAÇÃO EXPLÍCITA do resultado da autenticação institucional. Nunca enviar mensagens.",
+  "steps": [
+    {
+      "step": "SIM-01", "date": "2026-10-23", "from": "solicitante@exemplo.test", "trusted_institutional_sender": true,
+      "subject": "Vistoria preventiva das calhas do edifício-sede", "text": "Solicito vistoria das calhas e relatório de eventuais problemas.",
+      "expected": {"demand": "SIGA-2026-0001", "status": "NOVA_TRIAGEM", "mail_to": "gestor@exemplo.test", "mail_type": "NEW_TRIAGE"}
+    },
+    {
+      "step": "SIM-02", "date": "2026-10-23", "from": "gestor@exemplo.test", "trusted_institutional_sender": true,
+      "subject": "Re: [SIGA-2026-0001] Triagem", "text": "À Gabriela para vistoria acompanhada da Viva e informando Well do resultado. Fazer registro fotográfico e encartar no processo 12345",
+      "expected": {"assignee_suggested": "Gabriela", "process_reference": "12345", "process_verified": false, "needs_information": ["Viva", "Well"]}
+    },
+    {
+      "step": "SIM-03", "date": "2026-10-23", "from": "gestor@exemplo.test", "trusted_institutional_sender": true,
+      "text": "Gabriela foi adicionada ao banco de e-mails autorizados. Viva e Well desconsiderar. Gabriela vai tratar essa informação. Esse número de processo pode ser presumido, desde que esteja de acordo com a máscara padrão (campo opcional).",
+      "expected": {"assignee_person_id": "u-gabriela", "ignored_contact_suggestions": ["Viva", "Well"], "process_verified": false, "mail_to": "gabriela@exemplo.test", "mail_type": "INITIAL_DUE_REQUEST"}
+    },
+    {
+      "step": "SIM-04", "date": "2026-10-23", "from": "gabriela@exemplo.test", "trusted_institutional_sender": true,
+      "text": "26/10", "expected": {"current_due_date": "2026-10-26", "d_minus_2_calendar": "2026-10-24", "d_minus_2_delivery": "2026-10-23", "delivery_consolidated": true}
+    },
+    {
+      "step": "SIM-05", "date": "2026-10-23", "from": "gabriela@exemplo.test", "trusted_institutional_sender": true,
+      "text": "Mude para 30/10", "expected": {"requested_due_date": "2026-10-30", "request_status": "INCOMPLETA", "current_due_date": "2026-10-26", "mail_type": "ASK_EXTENSION_REASON"}
+    },
+    {
+      "step": "SIM-06", "date": "2026-10-23", "from": "gabriela@exemplo.test", "trusted_institutional_sender": true,
+      "text": "Não consegui agendar acompanhamento Viva para essa data, pois estarão em outro atendimento no Arquivo Geral. Não vislumbro prejuízo material.",
+      "expected": {"current_due_date": "2026-10-26", "request_status": "AGUARDANDO_GESTOR", "mail_type": "REQUEST_MANAGER_APPROVAL", "claimed_no_material_harm_verified": false}
+    },
+    {
+      "step": "SIM-07", "date": "2026-10-23", "from": "gestor@exemplo.test", "trusted_institutional_sender": true,
+      "text": "Autorizo", "expected": {"decision": "SEM_RESSALVAS", "current_due_date": "2026-10-30", "prior_due_date_preserved": "2026-10-26", "next_d_minus_2": "2026-10-28"}
+    },
+    {
+      "step": "SIM-08", "date": "2026-10-28", "from": "gabriela@exemplo.test", "trusted_institutional_sender": true,
+      "active_menu": "REMINDER_V1", "text": "2 e 4. Indico Manuel.",
+      "expected": {"intents": ["REQUEST_EXTENSION", "REQUEST_TRANSFER"], "current_due_date": "2026-10-30", "current_assignee": "u-gabriela", "mail_type": "ASK_TRANSFER_SCOPE"}
+    },
+    {
+      "step": "SIM-09", "date": "2026-10-28", "from": "gabriela@exemplo.test", "trusted_institutional_sender": true,
+      "text": "Eu finalizei minha parte em 28/10, mas o Manuel precisa abrir um novo chamado para conserto de parte das telhas.",
+      "expected": {"intents": ["DECLARE_STAGE_COMPLETE", "PROPOSE_CHILD_DEMAND"], "new_child_status": "NOT_CREATED", "original_demand_closed": false}
+    },
+    {
+      "step": "SIM-10", "date": "2026-10-28", "from": "gabriela@exemplo.test", "trusted_institutional_sender": true,
+      "active_menu": "DOCUMENTATION_V1", "text": "1 e 4.",
+      "expected": {"report_and_photos": "DECLARED_DONE", "file_attachment_verified": false, "repair_ticket": "NOT_OPENED", "mail_type": "MANAGER_DOUBLE_DECISION"}
+    },
+    {
+      "step": "SIM-11", "date": "2026-10-28", "from": "gestor@exemplo.test", "trusted_institutional_sender": true,
+      "active_menu": "MANAGER_DOUBLE_DECISION_V1", "text": "A1 e B1", "expected": {"parent_status": "ENCERRADA", "parent_closed_by": "u-gestor", "child_code": "SIGA-2026-0002", "child_status": "AGUARDANDO_ATRIBUICAO", "child_assignee": null, "child_due_date": null, "mail_type": "ASK_MANUEL_IDENTITY"}
+    },
+    {
+      "step": "SIM-12", "date": "2026-10-28", "from": "gestor@exemplo.test", "trusted_institutional_sender": true,
+      "text": "1. Manuel é o responsável, mas não sei o e-mail", "expected": {"child_status": "AGUARDANDO_ATRIBUICAO", "person_resolution": "none", "never_send_to_unidentified_person": true}
+    }
+  ]
+}

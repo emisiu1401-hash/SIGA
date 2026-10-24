@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.wrangler/
+.local/
+.dev.vars
+.env
+.env.*
+!.env.example
+test-results/
+playwright-report/
+*.zip
+* (1).*
+/dashboard_*.png
+/dashboard_*.html
+/*.jpg
+__pycache__/
+*.sqlite*
+secrets*.json
+worker-configuration.d.ts

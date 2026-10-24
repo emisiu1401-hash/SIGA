@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "siga",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-10-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "siga",
+      "database_id": "963e5857-6488-4eef-af8e-c835a0268e8a",
+      "migrations_dir": "db/migrations",
+    },
+  ],
+  "vars": {
+    "SIMULATION_MODE": "true",
+    "PUBLIC_DEMO": "true",
+    "AI_PROVIDER": "mock",
+    "AI_MODEL": "gpt-4.1-mini",
+    "EMAIL_SEND_ENABLED": "false",
+    "SEI_ALLOWED_HOSTS": "sei.tjmsp.jus.br",
+  },
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 },
+  "triggers": { "crons": ["*/15 * * * *", "0 12 * * *"] },
+}

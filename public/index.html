@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#142e2b" />
+    <meta
+      name="description"
+      content="SIGA — Sistema Inteligente de Gestão de Atividades. Painel executivo, demandas e aprovações auditáveis."
+    />
+    <title>SIGA · Gestão de Atividades</title>
+    <link rel="icon" href="/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" type="module"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Pular para o conteúdo</a>
+    <header class="mobile-header">
+      <button
+        id="menu-open"
+        aria-label="Abrir menu de navegação"
+        aria-expanded="false"
+        aria-controls="sidebar"
+      >
+        ☰</button
+      ><a href="#dashboard" class="mobile-brand">SIGA<span>DAO</span></a
+      ><button
+        id="mobile-filters"
+        aria-expanded="false"
+        aria-controls="filters"
+      >
+        Filtros
+      </button>
+    </header>
+    <div id="drawer-shade" hidden></div>
+    <aside id="sidebar" aria-label="Navegação principal">
+      <div class="brand">
+        <img src="/mark.svg" width="38" height="38" alt="" />
+        <div>SIGA<small>GESTÃO DE ATIVIDADES</small></div>
+      </div>
+      <button id="menu-close" aria-label="Fechar menu" class="mobile-only">
+        ✕
+      </button>
+      <p class="nav-label">ÁREA DE TRABALHO</p>
+      <nav id="navigation">
+        <a href="#dashboard" data-view="dashboard"
+          ><span aria-hidden="true">▦</span>Painel executivo</a
+        ><a href="#demands" data-view="demands"
+          ><span aria-hidden="true">▤</span>Demandas<span
+            class="nav-count"
+            id="nav-count"
+            >—</span
+          ></a
+        ><a href="#alerts" data-view="alerts"
+          ><span aria-hidden="true">◷</span>Prazos e alertas</a
+        ><a href="#team" data-view="team"
+          ><span aria-hidden="true">♙</span>Equipe e seções</a
+        ><a href="#reports" data-view="reports"
+          ><span aria-hidden="true">↗</span>Indicadores</a
+        >
+        <div class="private-nav" hidden>
+          <p class="nav-label">OPERAÇÃO</p>
+          <a href="#mail" data-view="mail"
+            ><span aria-hidden="true">✉</span>Correspondência</a
+          ><a href="#simulator" data-view="simulator"
+            ><span aria-hidden="true">⌘</span>Simulador de e-mail</a
+          ><a href="#audit" data-view="audit"
+            ><span aria-hidden="true">≡</span>Trilha de auditoria</a
+          ><a href="#settings" data-view="settings"
+            ><span aria-hidden="true">⚙</span>Configurações</a
+          >
+        </div>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="system-state"><i></i>Ambiente de demonstração</div>
+        <p>Dados fictícios · envio desativado</p>
+        <button id="account-button" class="account">
+          <span class="avatar">DG</span
+          ><span id="account-name"
+            >Direção-Geral<small>Acesso de consulta</small></span
+          ><span aria-hidden="true">↗</span>
+        </button>
+      </div>
+    </aside>
+    <main id="main" tabindex="-1">
+      <div class="topline">
+        <span>DIRETORIA DE ADMINISTRAÇÃO E OBRAS</span>
+        <div>
+          <span class="demo-label">DEMONSTRAÇÃO</span
+          ><button id="refresh" aria-label="Atualizar dados">↻</button>
+        </div>
+      </div>
+      <header class="page-heading">
+        <div>
+          <p class="eyebrow">VISÃO GERENCIAL / DAO</p>
+          <h1 id="page-title">Painel executivo<span>.</span></h1>
+          <p id="page-description">
+            Uma visão completa das demandas, dos prazos e das pessoas.
+          </p>
+        </div>
+        <div class="heading-actions">
+          <button id="new-demand" class="primary" hidden>＋ Nova demanda</button
+          ><button id="login-button" class="secondary">
+            Entrar na gestão <span aria-hidden="true">↗</span>
+          </button>
+        </div>
+      </header>
+      <div class="data-strip">
+        <span
+          ><i class="status-dot"></i
+          ><strong id="data-cutoff">Carregando dados…</strong></span
+        ><span id="sync-status">Gmail: não conectado</span
+        ><span id="updated-status">Atualização do painel: —</span>
+      </div>
+      <div id="notice" class="notice">
+        <span aria-hidden="true">ⓘ</span
+        ><span
+          >Você está em uma base de demonstração com dados fictícios. As
+          informações abaixo não representam atividades institucionais.</span
+        >
+      </div>
+      <section id="workspace">
+        <form id="filters" aria-label="Filtros da carteira">
+          <div class="filter-main">
+            <label
+              >Seção<select name="department" id="department">
+                <option value="">Todas as seções</option>
+                <option>SLC</option>
+                <option>SAP</option>
+                <option>SME</option>
+                <option>AE</option>
+                <option value="NONE">Não classificada</option>
+              </select></label
+            ><label
+              >Servidor<select name="person" id="person">
+                <option value="">Todos os servidores</option>
+              </select></label
+            ><label
+              >Prioridade<select name="priority">
+                <option value="">Todas as prioridades</option>
+                <option value="ALTA">Alta</option>
+                <option value="MEDIA">Média</option>
+                <option value="BAIXA">Baixa</option>
+                <option value="NONE">Não definida</option>
+              </select></label
+            ><label
+              >Situação<select name="status">
+                <option value="">Todas as situações</option>
+                <option value="NOVA_TRIAGEM">Nova triagem</option>
+                <option value="AGUARDANDO_ATRIBUICAO">
+                  Aguardando atribuição
+                </option>
+                <option value="EM_EXECUCAO">Em execução</option>
+                <option value="AGUARDANDO_VALIDACAO">
+                  Aguardando validação
+                </option>
+                <option value="ENCERRADA">Encerrada</option>
+                <option value="ARQUIVADA_SEM_DEMANDA">Arquivada</option>
+                <option value="CANCELADA">Cancelada</option>
+              </select></label
+            ><button
+              type="button"
+              id="more-filters"
+              aria-expanded="false"
+              aria-controls="advanced-filters"
+            >
+              Mais filtros <span aria-hidden="true">＋</span></button
+            ><button
+              type="button"
+              id="clear-filters"
+              aria-label="Limpar filtros"
+            >
+              Limpar ↺
+            </button>
+          </div>
+          <div id="advanced-filters" hidden>
+            <label
+              >Pesquisar<input name="q" placeholder="Código ou objeto" /></label
+            ><label>Data inicial<input name="from" type="date" /></label
+            ><label>Data final<input name="to" type="date" /></label
+            ><label
+              >Considerar data de<select name="axis">
+                <option value="">Abertura</option>
+                <option value="due">Vencimento</option>
+                <option value="closed">Encerramento</option>
+              </select></label
+            ><label
+              >Prazo<select name="deadline">
+                <option value="">Vigente</option>
+                <option value="original">Original</option>
+              </select></label
+            ><label
+              >Relação<select name="relation">
+                <option value="">Todas</option>
+                <option value="parent">Com demandas filhas</option>
+                <option value="child">Demanda filha</option>
+              </select></label
+            ><label
+              >Processo SEI<select name="sei">
+                <option value="">Com ou sem link</option>
+                <option value="yes">Com link validado</option>
+                <option value="no">Sem link</option>
+              </select></label
+            ><label
+              >Origem<select name="origin">
+                <option value="">Todas</option>
+                <option value="EMAIL">E-mail</option>
+                <option value="DASHBOARD">Painel</option>
+                <option value="CHILD">Demanda filha</option>
+              </select></label
+            >
+          </div>
+        </form>
+        <div
+          class="quick-filters"
+          role="group"
+          aria-label="Atalhos de consulta"
+        >
+          <button data-shortcut="" class="selected">Toda a carteira</button
+          ><button data-shortcut="late">
+            Vencidas <span class="quick-count" id="late-count">—</span></button
+          ><button data-shortcut="today">Vencem hoje</button
+          ><button data-shortcut="d2">Até 2 dias</button
+          ><button data-shortcut="idle">Sem atualização ≥ 7 dias</button
+          ><button data-shortcut="validation">Aguardando validação</button>
+        </div>
+        <div id="dashboard-content">
+          <section
+            id="kpis"
+            aria-label="Indicadores da carteira"
+            class="kpi-grid"
+          ></section>
+          <div class="section-caption">
+            <h2>Panorama da carteira</h2>
+            <span>Indicadores refletem os filtros selecionados</span>
+          </div>
+          <div class="chart-grid">
+            <section class="chart-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Demandas por seção</h3>
+                  <p>Carteira aberta · distribuição por prioridade</p>
+                </div>
+                <span class="panel-icon" aria-hidden="true">▥</span>
+              </div>
+              <div id="section-chart"></div>
+              <div class="legend">
+                <span><i class="high"></i>Alta</span
+                ><span><i class="medium"></i>Média</span
+                ><span><i class="low"></i>Baixa</span
+                ><span><i class="undefined"></i>Não definida</span>
+              </div>
+            </section>
+            <section class="chart-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Idade das demandas</h3>
+                  <p>Dias corridos desde a abertura · demandas abertas</p>
+                </div>
+                <span class="panel-icon" aria-hidden="true">◷</span>
+              </div>
+              <div id="age-chart"></div>
+              <p class="chart-footnote">
+                Tempo de ciclo não representa horas trabalhadas.
+              </p>
+            </section>
+            <section class="chart-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Entradas e encerramentos</h3>
+                  <p>Fluxo mensal da coorte selecionada</p>
+                </div>
+                <span class="panel-icon" aria-hidden="true">↗</span>
+              </div>
+              <div id="flow-chart"></div>
+              <div class="legend">
+                <span><i class="flow-in"></i>Entradas</span
+                ><span><i class="flow-out"></i>Encerramentos</span
+                ><span>Estoque da coorte indicado em cada mês</span>
+              </div>
+            </section>
+            <section class="chart-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Carga por servidor</h3>
+                  <p>Atribuições atuais · sem classificação de desempenho</p>
+                </div>
+                <span class="panel-icon" aria-hidden="true">♙</span>
+              </div>
+              <div id="people-chart"></div>
+            </section>
+          </div>
+          <div class="section-caption">
+            <h2>Seções da DAO</h2>
+            <span>Atividades abertas e atenção necessária</span>
+          </div>
+          <section
+            id="department-cards"
+            class="department-grid"
+            aria-label="Resumo por seção"
+          ></section>
+        </div>
+        <section
+          id="demand-list"
+          class="list-section"
+          aria-labelledby="list-heading"
+        >
+          <div class="section-caption">
+            <div>
+              <h2 id="list-heading">Demandas em acompanhamento</h2>
+              <p id="result-count">Carregando…</p>
+            </div>
+            <label class="sort-label"
+              >Ordenar<select id="sort">
+                <option value="">Atenção e prioridade</option>
+                <option value="due">Prazo mais próximo</option>
+                <option value="age">Mais antigas</option>
+                <option value="code">Código</option>
+              </select></label
+            >
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Demanda</th>
+                  <th>Seção / responsável</th>
+                  <th>Prioridade / situação</th>
+                  <th>Prazo vigente</th>
+                  <th>Dias abertos</th>
+                  <th>Atraso</th>
+                  <th>Sem atualização</th>
+                  <th>Processo</th>
+                </tr>
+              </thead>
+              <tbody id="demand-rows"></tbody>
+            </table>
+          </div>
+          <div id="demand-cards" class="demand-cards"></div>
+          <div id="empty-state" hidden>
+            <div aria-hidden="true">⌕</div>
+            <h3>Nenhuma demanda encontrada</h3>
+            <p>Experimente outro recorte ou limpe os filtros.</p>
+            <button id="empty-clear">Limpar filtros</button>
+          </div>
+          <div class="pagination">
+            <span id="page-info"></span>
+            <div>
+              <button id="previous" aria-label="Página anterior">←</button
+              ><button id="next" aria-label="Próxima página">→</button>
+            </div>
+          </div>
+        </section>
+        <section id="team-content" hidden></section>
+        <section id="reports-content" hidden></section>
+      </section>
+      <section id="operation-content" hidden></section>
+      <footer>
+        <span
+          >SIGA <span class="footer-divider">/</span> Sistema Inteligente de
+          Gestão de Atividades</span
+        ><button id="definitions">
+          Definições dos indicadores <span aria-hidden="true">↗</span>
+        </button>
+      </footer>
+    </main>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <dialog id="dialog" aria-labelledby="dialog-title">
+      <div class="dialog-top">
+        <span class="eyebrow" id="dialog-eyebrow">SIGA / DETALHE</span
+        ><button id="dialog-close" aria-label="Fechar detalhe">✕</button>
+      </div>
+      <h2 id="dialog-title"></h2>
+      <div id="dialog-content"></div>
+    </dialog>
+  </body>
+</html>
