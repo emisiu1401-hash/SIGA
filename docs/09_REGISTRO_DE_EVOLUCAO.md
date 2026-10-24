@@ -43,6 +43,15 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Desbloqueio do cadastro de MFA — 24/10/2026
+
+- Problema relatado: primeiro login parado na tela Cloudflare Access sem método MFA cadastrado.
+- Diagnóstico: organização/aplicação já permitem TOTP, chave de segurança e biometria; porém não havia aplicação App Launcher. O acesso a `/AddMfaDevice` reproduziu `/NoAuth` e pedido para o administrador ativar o portal.
+- Correção de infraestrutura: criada aplicação `app_launcher` com OTP e política contendo somente os mesmos e-mails exatos já autorizados no privado. Exigência de MFA e senha individual do SIGA preservadas; não houve ampliação por domínio ou bypass.
+- Guia 19 atualizado com inscrição pessoal de autenticador, link direto e necessidade de manter a política do portal ao habilitar novas pessoas. Não houve coleta de código, QR ou inscrição de dispositivo pelo agente.
+- Verificação: portal antes retornava `/NoAuth`; após ativação, navegador abriu login do App Launcher com campo de e-mail e envio de código. API confirmou política limitada e MFA obrigatório da aplicação preservado. Não foi solicitado código por e-mail nem concluída inscrição pelo agente.
+- Não se declara concluída a autenticação pessoal: cadastro e prova do fator dependem do usuário. Sem alteração de código do Worker, banco, senhas ou integrações Gmail/IA.
+
 ### Proteção de e-mail e IA — 24/10/2026
 
 - Autorização: responsável identificou risco de instruções/códigos em e-mails e solicitou providências contra sabotagem.

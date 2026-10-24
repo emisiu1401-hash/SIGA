@@ -4,6 +4,14 @@ O ambiente privado usa duas camadas: **Cloudflare Access** verifica o e-mail aut
 
 Abra `https://siga-private.emisiu1401.workers.dev/login`. Complete a verificação Cloudflare com seu próprio e-mail. Informe a credencial recebida. Senhas temporárias devem ser trocadas no primeiro acesso; até lá, o backend bloqueia os dados e as operações do painel. As credenciais iniciais reais são entregues somente na conversa/arquivo local privado, nunca neste repositório.
 
+## Primeiro acesso: cadastrar MFA no Cloudflare
+
+Se aparecer **Nenhum método de autenticação configurado**, ainda falta cadastrar um dispositivo pessoal no Cloudflare Access. Abra [Cadastrar MFA](https://siga-emisiu1401.cloudflareaccess.com/AddMfaDevice), entre com o mesmo e-mail autorizado e adicione um aplicativo autenticador (Google/Microsoft Authenticator) ou um método compatível, como Windows Hello. No aplicativo autenticador, escaneie o QR code e confirme com o código de seis dígitos. Não envie o QR code, chave de configuração ou códigos para terceiros ou para esta conversa. Depois, retorne ao SIGA privado e complete a senha individual.
+
+O portal **App Launcher** precisa estar habilitado e permitir o mesmo e-mail. Em 24/10/2026, o diagnóstico reproduziu `/NoAuth` com a mensagem de portal não ativado; a aplicação `app_launcher` foi criada com política limitada aos mesmos usuários autorizados. Os métodos de MFA da organização e a exigência de MFA do SIGA privado foram preservados. O portal de cadastro é a etapa anterior ao MFA, conforme o fluxo oficial da Cloudflare; isso não libera acesso ao SIGA sem o segundo fator.
+
+Se o navegador continuar na página antiga, reabra o link de cadastro em uma aba nova ou janela privativa. A inscrição e a verificação do dispositivo pessoal precisam ser concluídas pelo próprio usuário. [Procedimento oficial](https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/independent-mfa/#enroll-authenticators).
+
 ## Trocar e recuperar senha
 
 - **Alterar minha senha**, junto aos controles de sessão: informe a atual e a nova senha, confirmando-a. A aplicação encerra todas as sessões dessa conta; entre novamente.
@@ -19,9 +27,9 @@ Em **Usuários e acessos**, o administrador:
 
 1. Cadastra a pessoa com seu e-mail real, seção e perfil, ou edita o cadastro em Equipe.
 2. Seleciona a pessoa e um identificador de acesso. O botão **Habilitar acesso / emitir senha temporária** gera uma credencial aleatória exibida uma única vez. Guarde e entregue por canal restrito. Reemissão invalida senha, sessões e links anteriores.
-3. Autoriza explicitamente o mesmo e-mail na política da aplicação Cloudflare Access e no Secret `ACCESS_ALLOWED_EMAILS` do Worker privado. Essas listas não são abertas automaticamente pelo cadastro. A tela indica essa pendência. Não libere todo o domínio nem desative MFA para simplificar o cadastro.
+3. Autoriza explicitamente o mesmo e-mail nas políticas da aplicação **SIGA privado** e do **App Launcher** (para cadastro de MFA), e no Secret `ACCESS_ALLOWED_EMAILS` do Worker privado. Essas listas não são abertas automaticamente pelo cadastro. A tela indica essa pendência. Não libere todo o domínio nem desative MFA para simplificar o cadastro.
 
-Na Cloudflare, edite a política Allow do aplicativo **SIGA privado**, preservando os e-mails já autorizados e acrescentando o endereço exato. Atualize o Secret do Worker **siga-private** com a lista de e-mails separados por vírgula. Nunca edite a demonstração nem copie senhas para variáveis públicas.
+Na Cloudflare, edite as políticas Allow dos aplicativos **SIGA privado** e **App Launcher**, preservando os e-mails já autorizados e acrescentando o endereço exato. Atualize o Secret do Worker **siga-private** com a lista de e-mails separados por vírgula. Nunca edite a demonstração nem copie senhas para variáveis públicas.
 
 | Perfil | Permissões |
 |---|---|
