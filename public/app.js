@@ -73,6 +73,7 @@ let context = {
   requestSequence = 0,
   opener,
   detailState,
+  gmailFeedback = "",
   toastTimer;
 const filters = $("#filters"),
   dialog = $("#dialog");
@@ -1180,7 +1181,7 @@ async function loadOperation() {
         "";
       target.insertAdjacentHTML(
         "beforeend",
-        `<section class="operation-panel" id="gmail-account-panel"><h2>Conta Google das comunicações</h2><p>Esta caixa recebe e envia as comunicações do SIGA. Ela é independente do e-mail usado para entrar no sistema.</p><div class="settings-row"><span>Conta conectada</span><strong class="gmail-address">${gmail.email ? e(gmail.email) : "Nenhuma conta conectada"}</strong></div><div class="settings-row"><span>Situação</span><strong>${gmail.connected ? (gmail.paused ? "Pausada após conexão" : "Conectada") : gmail.oauthReady ? "Pronto para autorizar sua conta" : "Etapa 1 de 3 · configurar aplicativo Google"}</strong></div><p>${gmail.oauthReady ? "Informe a nova conta e autorize o acesso na página do Google. O SIGA verifica se a caixa autorizada corresponde ao endereço informado." : "O Google exige uma configuração inicial do aplicativo SIGA antes de exibir a autorização da sua conta. O identificador e o segredo OAuth ainda não foram configurados. Isso é separado do token de IA e da sua senha."}</p>${context.actor.roles.includes("ADMIN") ? (gmail.oauthReady ? `<form id="gmail-account-form" class="detail-form"><label>E-mail Google para as comunicações<input type="email" name="email" value="${e(suggestedEmail)}" required maxlength="254" autocomplete="email" placeholder="Informe a conta Google"></label><label class="gmail-option"><input type="checkbox" name="allowSend">Solicitar também permissão para envio</label><p class="subtext">A troca pausa as comunicações. Mensagens pendentes ficam retidas para revisão e não são transferidas para a nova caixa. O histórico das demandas é preservado.</p><button type="submit" class="primary" ${gmail.oauthReady ? "" : "disabled"}>Conectar ou trocar conta Google</button><div id="gmail-account-result" role="status"></div></form>` : `<div class="stack"><button class="primary" data-gmail-setup>Configurar Gmail (passo a passo)</button><button id="gmail-recheck">Já configurei · verificar novamente</button><p>Depois desta etapa, aparecerá aqui o botão para conectar ou trocar a conta Google.</p></div>`) : "<p>Somente o administrador pode configurar ou trocar a conta.</p>"}${gmail.connected && gmail.paused ? `<button class="spaced" id="gmail-account-activate" ${gmail.integrationsEnabled ? "" : "disabled"}>Retomar comunicações desta conta</button><p class="subtext">${gmail.integrationsEnabled ? "A retomada mantém as permissões de leitura/envio configuradas na plataforma." : "A plataforma ainda está em simulação. Leitura e envio reais dependem da ativação das integrações."}</p>` : ""}${gmail.heldMessages ? `<p>${gmail.heldMessages} mensagem(ns) retida(s) após troca de conta. Consulte Correspondência antes de qualquer reenvio.</p>` : ""}</section>`,
+        `<section class="operation-panel" id="gmail-account-panel"><h2>Conta Google das comunicações</h2>${gmailFeedback ? `<p id="gmail-oauth-feedback" class="notice" role="status">${e(gmailFeedback)}</p>` : ""}<p>Esta caixa recebe e envia as comunicações do SIGA. Ela é independente do e-mail usado para entrar no sistema.</p><div class="settings-row"><span>Conta conectada</span><strong class="gmail-address">${gmail.email ? e(gmail.email) : "Nenhuma conta conectada"}</strong></div><div class="settings-row"><span>Situação</span><strong>${gmail.connected ? (gmail.paused ? "Pausada após conexão" : "Conectada") : gmail.oauthReady ? "Pronto para autorizar sua conta" : "Etapa 1 de 3 · configurar aplicativo Google"}</strong></div><p>${gmail.oauthReady ? "Informe a nova conta e autorize o acesso na página do Google. O SIGA verifica se a caixa autorizada corresponde ao endereço informado." : "O Google exige uma configuração inicial do aplicativo SIGA antes de exibir a autorização da sua conta. O identificador e o segredo OAuth ainda não foram configurados. Isso é separado do token de IA e da sua senha."}</p>${context.actor.roles.includes("ADMIN") ? (gmail.oauthReady ? `<form id="gmail-account-form" class="detail-form"><label>E-mail Google para as comunicações<input type="email" name="email" value="${e(suggestedEmail)}" required maxlength="254" autocomplete="email" placeholder="Informe a conta Google"></label><label class="gmail-option"><input type="checkbox" name="allowSend">Solicitar também permissão para envio</label><p class="subtext">A troca pausa as comunicações. Mensagens pendentes ficam retidas para revisão e não são transferidas para a nova caixa. O histórico das demandas é preservado.</p><button type="submit" class="primary" ${gmail.oauthReady ? "" : "disabled"}>Conectar ou trocar conta Google</button><div id="gmail-account-result" role="status"></div></form>` : `<div class="stack"><button class="primary" data-gmail-setup>Configurar Gmail (passo a passo)</button><button id="gmail-recheck">Já configurei · verificar novamente</button><p>Depois desta etapa, aparecerá aqui o botão para conectar ou trocar a conta Google.</p></div>`) : "<p>Somente o administrador pode configurar ou trocar a conta.</p>"}${gmail.connected && gmail.paused ? `<button class="spaced" id="gmail-account-activate" ${gmail.integrationsEnabled ? "" : "disabled"}>Retomar comunicações desta conta</button><p class="subtext">${gmail.integrationsEnabled ? "A retomada mantém as permissões de leitura/envio configuradas na plataforma." : "A plataforma ainda está em simulação. Leitura e envio reais dependem da ativação das integrações."}</p>` : ""}${gmail.heldMessages ? `<p>${gmail.heldMessages} mensagem(ns) retida(s) após troca de conta. Consulte Correspondência antes de qualquer reenvio.</p>` : ""}</section>`,
       );
       $("#gmail-recheck")?.addEventListener("click", () => loadOperation());
       $$("[data-gmail-setup]").forEach((button) =>
@@ -1466,7 +1467,6 @@ async function initialize() {
         e(context.actor.roles.join(" · ")) +
         "</small>"
       : "Direção-Geral<small>Acesso de consulta</small>";
-    setView();
     if (p.has("gmail")) {
       const result = p.get("gmail"),
         reason = p.get("reason");
@@ -1483,18 +1483,42 @@ async function initialize() {
           "Conexão cancelada. A conta anterior foi mantida.",
         GMAIL_BUSY:
           "Há processamento em andamento ou a conta mudou. Atualize e conecte novamente.",
+        GMAIL_API_DISABLED:
+          "Ative a Gmail API no mesmo projeto do Google Cloud que criou o cliente OAuth. Depois, inicie uma nova conexão no SIGA.",
+        GMAIL_OAUTH_CLIENT:
+          "O Google recusou as credenciais do aplicativo. Confira GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET em Produção no Worker privado e verifique se pertencem ao mesmo cliente OAuth.",
+        GMAIL_OAUTH_EXPIRED:
+          "O Google recusou o código de autorização. Inicie uma nova conexão no SIGA; não reutilize a página de retorno.",
+        GMAIL_PROVIDER_UNAVAILABLE:
+          "O serviço Google está temporariamente indisponível ou limitou as tentativas. Aguarde alguns minutos e inicie uma nova conexão no SIGA.",
+        GMAIL_OAUTH_EXCHANGE:
+          "O Google recusou a conclusão da autorização. Confira o cliente OAuth e o endereço de retorno no Google Cloud.",
+        GMAIL_PROFILE:
+          "O Google não permitiu verificar a caixa Gmail. Confira se a Gmail API está ativa e se a conta concedeu as permissões solicitadas.",
+        GMAIL_OAUTH_NETWORK:
+          "A comunicação do servidor com o Google falhou ou excedeu o tempo limite. Aguarde e inicie uma nova conexão no SIGA.",
+        GMAIL_OAUTH_RESPONSE:
+          "O Google devolveu uma resposta inválida ou incompleta. Aguarde e inicie uma nova conexão no SIGA.",
+        GMAIL_OAUTH_PROTECTION:
+          "Não foi possível validar a proteção desta tentativa. Inicie uma nova conexão. Se persistir, o administrador deve conferir a chave de proteção na Cloudflare.",
+        GMAIL_OAUTH_STORAGE:
+          "O Google respondeu, mas o SIGA não conseguiu salvar a conexão. Informe a referência abaixo ao administrador para consultar o log.",
       };
-      toast(
+      gmailFeedback =
         result === "connected"
           ? "Conta Google conectada e verificada. As comunicações estão pausadas até sua retomada."
           : messages[reason] ||
-              "Não foi possível conectar o Google. A conta anterior foi mantida.",
-      );
+            "Não foi possível conectar o Google. A conta anterior foi mantida.";
+      const ref = p.get("ref") || "";
+      if (/^[a-f0-9-]{36}$/.test(ref)) gmailFeedback += " Referência: " + ref;
+      toast(gmailFeedback);
       const clean = new URL(location.href);
       clean.searchParams.delete("gmail");
       clean.searchParams.delete("reason");
+      clean.searchParams.delete("ref");
       history.replaceState(null, "", clean);
     }
+    setView();
   } catch (error) {
     toast(error.message);
     $("#result-count").textContent =

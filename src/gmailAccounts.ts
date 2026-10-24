@@ -1,12 +1,74 @@
 import { auditStatement } from "./audit.ts";
 import { encryptSecret, decryptSecret, constantEqual } from "./auth.ts";
-import { assert } from "./domain.ts";
+import { assert, DomainError } from "./domain.ts";
 import { boundedJson } from "./interpreter.ts";
 import type { Repository } from "./repository.ts";
 import type { RuntimeEnv } from "./types.ts";
 
 const READ = "https://www.googleapis.com/auth/gmail.readonly";
 const SEND = "https://www.googleapis.com/auth/gmail.send";
+// Fixed codes only: never forward provider descriptions, bodies or credentials.
+async function checkGoogleResponse(response: Response, profile = false) {
+  if (response.ok) return;
+  let reason = "";
+  try {
+    const body = (await boundedJson(response, 24000)) as {
+      error?:
+        | string
+        | {
+            errors?: { reason?: string }[];
+            details?: { reason?: string }[];
+          };
+    };
+    if (typeof body?.error === "string") reason = body.error;
+    else if (body?.error) {
+      const reasons = [
+        ...(body.error.errors || []),
+        ...(body.error.details || []),
+      ];
+      if (
+        reasons.some((x) =>
+          ["SERVICE_DISABLED", "accessNotConfigured"].includes(x?.reason || ""),
+        )
+      )
+        reason = "SERVICE_DISABLED";
+    }
+  } catch {
+    /* Malformed error bodies do not override the HTTP status. */
+  }
+  const code =
+    response.status >= 500 || response.status === 429
+      ? "GMAIL_PROVIDER_UNAVAILABLE"
+      : reason === "SERVICE_DISABLED"
+        ? "GMAIL_API_DISABLED"
+        : ["invalid_client", "unauthorized_client"].includes(reason)
+          ? "GMAIL_OAUTH_CLIENT"
+          : reason === "invalid_grant"
+            ? "GMAIL_OAUTH_EXPIRED"
+            : profile
+              ? "GMAIL_PROFILE"
+              : "GMAIL_OAUTH_EXCHANGE";
+  throw new DomainError(
+    code,
+    "O Google não concluiu a conexão. Consulte a orientação nas Configurações.",
+    503,
+  );
+}
+
+async function googleObject(response: Response) {
+  try {
+    const data = await boundedJson(response, 24000);
+    if (!data || typeof data !== "object" || Array.isArray(data))
+      throw new Error();
+    return data;
+  } catch {
+    throw new DomainError(
+      "GMAIL_OAUTH_RESPONSE",
+      "Resposta Google inválida ou incompleta.",
+      503,
+    );
+  }
+}
 type Control = {
   active_connection_id: string | null;
   version: number;
@@ -319,6 +381,12 @@ export async function finishGmailOAuth(
     403,
   );
   const leaseOwner = crypto.randomUUID();
+  let stage:
+    | "authorization"
+    | "protection"
+    | "exchange"
+    | "profile"
+    | "storage" = "authorization";
   try {
     assert(
       !url.searchParams.has("error"),
@@ -331,6 +399,12 @@ export async function finishGmailOAuth(
       "GMAIL_OAUTH_CODE",
       "Código de autorização inválido.",
     );
+    stage = "protection";
+    const verifier = await decryptSecret(
+      pending.verifier_cipher,
+      env.SECRET_ENCRYPTION_KEY!,
+    );
+    stage = "exchange";
     const exchange = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -340,21 +414,13 @@ export async function finishGmailOAuth(
         code,
         grant_type: "authorization_code",
         redirect_uri: uri,
-        code_verifier: await decryptSecret(
-          pending.verifier_cipher,
-          env.SECRET_ENCRYPTION_KEY!,
-        ),
+        code_verifier: verifier,
       }),
       redirect: "error",
       signal: AbortSignal.timeout(15000),
     });
-    assert(
-      exchange.ok,
-      "GMAIL_OAUTH_EXCHANGE",
-      "O Google não concluiu a autorização. Tente conectar novamente.",
-      503,
-    );
-    const tokens = (await boundedJson(exchange, 24000)) as {
+    await checkGoogleResponse(exchange);
+    const tokens = (await googleObject(exchange)) as {
       access_token?: string;
       refresh_token?: string;
       scope?: string;
@@ -376,13 +442,15 @@ export async function finishGmailOAuth(
       "O Google não forneceu acesso contínuo. Reconecte com consentimento offline.",
       503,
     );
-    const scopes = (tokens.scope || "").split(" ");
+    const scopes =
+      typeof tokens.scope === "string" ? tokens.scope.split(" ") : [];
     assert(
       scopes.includes(READ) && (!pending.request_send || scopes.includes(SEND)),
       "GMAIL_OAUTH_SCOPES",
       "Permissões Google insuficientes. A conta anterior foi mantida.",
       403,
     );
+    stage = "profile";
     const response = await fetch(
       "https://gmail.googleapis.com/gmail/v1/users/me/profile",
       {
@@ -391,18 +459,14 @@ export async function finishGmailOAuth(
         signal: AbortSignal.timeout(15000),
       },
     );
-    assert(
-      response.ok,
-      "GMAIL_PROFILE",
-      "Não foi possível verificar a caixa Google.",
-      503,
-    );
-    const profile = (await boundedJson(response, 24000)) as {
+    await checkGoogleResponse(response, true);
+    const profile = (await googleObject(response)) as {
       emailAddress?: string;
       historyId?: string;
     };
     assert(
-      profile.emailAddress?.toLowerCase() === pending.expected_email,
+      typeof profile.emailAddress === "string" &&
+        profile.emailAddress.toLowerCase() === pending.expected_email,
       "MAILBOX_MISMATCH",
       "A conta autorizada não corresponde ao e-mail informado. A conta anterior foi mantida.",
       403,
@@ -414,6 +478,7 @@ export async function finishGmailOAuth(
       "Marco de sincronização inválido.",
       503,
     );
+    stage = "storage";
     const previous = await control(repo);
     const previousMailbox = previous.active_connection_id
       ? (await connection(repo, previous.active_connection_id)).mailbox_id
@@ -520,13 +585,72 @@ export async function finishGmailOAuth(
     ]);
     return { email: pending.expected_email };
   } catch (e) {
+    const code =
+      e instanceof DomainError
+        ? e.code
+        : stage === "protection"
+          ? "GMAIL_OAUTH_PROTECTION"
+          : stage === "storage"
+            ? "GMAIL_OAUTH_STORAGE"
+            : ["exchange", "profile"].includes(stage)
+              ? "GMAIL_OAUTH_NETWORK"
+              : "GMAIL_OAUTH_FAILED";
+    // The exception message/stack may contain SQL parameters or provider secrets.
+    const kind =
+      e instanceof Error &&
+      [
+        "Error",
+        "TypeError",
+        "SyntaxError",
+        "OperationError",
+        "AbortError",
+        "TimeoutError",
+        "InvalidCharacterError",
+      ].includes(e.name)
+        ? e.name
+        : "Other";
+    const databaseFailure =
+      stage === "storage" && e instanceof Error
+        ? [
+            "D1_TYPE_ERROR",
+            "FOREIGN KEY constraint",
+            "NOT NULL constraint",
+            "UNIQUE constraint",
+          ].find((x) => e.message.includes(x)) || null
+        : null;
     await repo.db
       .prepare(
         "UPDATE gmail_oauth_requests SET status='FAILED',verifier_cipher='' WHERE state_hash=?",
       )
       .bind(stateHash)
       .run();
-    throw e;
+    try {
+      await auditStatement(repo.db, {
+        actor: (await repo.people()).find((p) => p.id === actorId),
+        requestId: repo.requestId,
+        action: "GMAIL_OAUTH_FAILED",
+        resource: "/api/gmail/oauth/callback",
+        source: "GMAIL",
+        outcome: "ERRO",
+        details: { stage, code, kind, databaseFailure },
+      }).run();
+    } catch {
+      console.error(
+        JSON.stringify({
+          event: "gmail_oauth_audit_failed",
+          requestId: repo.requestId,
+          stage,
+          code,
+        }),
+      );
+    }
+    throw e instanceof DomainError
+      ? e
+      : new DomainError(
+          code,
+          "A conexão Gmail falhou. Consulte as Configurações e o registro de auditoria.",
+          503,
+        );
   } finally {
     await repo.db
       .prepare(

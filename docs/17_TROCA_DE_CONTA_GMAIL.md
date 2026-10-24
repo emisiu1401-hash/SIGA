@@ -38,6 +38,18 @@ Demandas e eventos são preservados. Cursores e deduplicação são separados po
 
 Os refresh tokens são cifrados com AES-GCM e nunca retornam em configurações, exportações ou logs. Após a troca, a credencial anterior é removida do armazenamento ativo do SIGA; isso não equivale a revogar a autorização na conta Google. Para revogação completa, remova o acesso nas configurações de segurança da conta anterior. Backups anteriores podem conter a cópia cifrada.
 
+## Falha ao retornar da autorização Google
+
+Depois do retorno, Configurações mantém a orientação visível no painel da conta, com uma referência para localizar a tentativa na auditoria. O evento `GMAIL_OAUTH_FAILED` registra apenas etapa, código fixo, classe de falha e categoria de constraint quando aplicável. Não registra código OAuth, tokens, segredo do cliente, corpo da resposta Google, mensagem bruta da exceção ou conteúdo de e-mails.
+
+- **Gmail API desativada:** habilite **Gmail API** na biblioteca do mesmo projeto Google Cloud que criou o cliente OAuth. Depois, inicie uma conexão nova pelo SIGA.
+- **Cliente recusado:** confira os dois Secrets de Produção do Worker privado e o cliente correspondente no Google Cloud.
+- **Código recusado/expirado:** inicie uma nova autorização no SIGA; não recarregue/reutilize a URL de retorno.
+- **Indisponibilidade/rede/resposta inválida:** aguarde e comece uma nova conexão. O aplicativo não repete automaticamente a troca de um código de uso único.
+- **Proteção/gravação:** forneça a referência ao administrador para consulta da etapa no log. Não troque a chave de criptografia para tentar corrigir; isso impede abrir credenciais já cifradas.
+
+Uma página de erro 500 exibida pelo próprio Google antes do retorno ao SIGA é uma falha diferente; não gera diagnóstico de callback. Sem a mensagem da nova tentativa, o registro genérico anterior não permite afirmar a causa original.
+
 ## Estado desta entrega
 
-Recurso implementado e testado com provedores fictícios. O cliente OAuth Google ainda não foi fornecido/configurado; não há caixa real conectada. A implantação continua com `SIMULATION_MODE=true`, `EMAIL_SEND_ENABLED=false`, IA mock e sem cron. A ativação real exige revisão da configuração da plataforma: `SIMULATION_MODE=false` e, para envio, `EMAIL_SEND_ENABLED=true`, além das permissões Google e da retomada pelo administrador. Nenhuma caixa real foi lida e nenhum e-mail real foi enviado nos testes.
+Recurso implementado e testado com provedores fictícios, inclusive no workerd/D1. Em 24/10/2026, a presença dos dois Secrets OAuth em Produção foi confirmada; isso não permite verificar seus valores nem significa conexão concluída. O titular relatou retorno com falha e erro 500 no Google; os callbacks anteriores registraram falha genérica, insuficiente para determinar sua origem. A implantação continua com `SIMULATION_MODE=true`, `EMAIL_SEND_ENABLED=false`, IA mock e sem cron. A ativação real exige revisão da configuração da plataforma: `SIMULATION_MODE=false` e, para envio, `EMAIL_SEND_ENABLED=true`, além das permissões Google e da retomada pelo administrador. Nenhuma caixa real foi lida e nenhum e-mail real foi enviado nos testes.

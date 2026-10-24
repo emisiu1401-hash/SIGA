@@ -151,6 +151,11 @@ globalThis.fetch = async (url, options = {}) => {
   ) {
     const auth = new Headers(options.headers).get("Authorization").slice(7);
     const payload = JSON.parse(Buffer.from(auth, "base64url").toString());
+    if (payload.failure === "api-disabled")
+      return Response.json(
+        { error: { details: [{ reason: "SERVICE_DISABLED" }] } },
+        { status: 403 },
+      );
     return Response.json({ emailAddress: payload.email, historyId: "100" });
   }
   if (String(url) !== issuer + "/cdn-cgi/access/certs")

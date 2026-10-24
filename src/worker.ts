@@ -311,12 +311,27 @@ async function handleRequest(
           "GMAIL_OAUTH_STATE",
           "GMAIL_OAUTH_CANCELLED",
           "GMAIL_BUSY",
+          "GMAIL_API_DISABLED",
+          "GMAIL_PROVIDER_UNAVAILABLE",
+          "GMAIL_OAUTH_CLIENT",
+          "GMAIL_OAUTH_EXPIRED",
+          "GMAIL_OAUTH_EXCHANGE",
+          "GMAIL_OAUTH_NETWORK",
+          "GMAIL_OAUTH_RESPONSE",
+          "GMAIL_OAUTH_PROTECTION",
+          "GMAIL_OAUTH_STORAGE",
+          "GMAIL_PROFILE",
         ];
         const reason =
           error instanceof DomainError && allowed.includes(error.code)
             ? error.code
             : "GMAIL_OAUTH_FAILED";
-        destination = "/?gmail=error&reason=" + reason + "#settings";
+        destination =
+          "/?gmail=error&reason=" +
+          reason +
+          "&ref=" +
+          trace.requestId +
+          "#settings";
       }
       return secured(
         new Response(null, {

@@ -43,6 +43,15 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Diagnóstico seguro do retorno OAuth Gmail — 24/10/2026
+
+- Relato: uma tentativa completou o consentimento e falhou dentro do SIGA; outra exibiu erro 500 do próprio Google. Auditoria confirmou callbacks com `GMAIL_OAUTH_FAILED`, antes sem etapa ou classe. Sem logs históricos adicionais, a causa original permanece indeterminada; não atribuída por presunção a indisponibilidade Google.
+- Mudança: respostas Google limitadas e validadas; classificação de cliente recusado, código expirado, API desativada, indisponibilidade, rede, resposta, criptografia e persistência. Falhas ganham evento de auditoria com etapa/categoria fixa, sem mensagens/stack/payloads/credenciais. Página mantém orientação e referência do pedido em Configurações; parâmetros transitórios removidos da URL.
+- Preservação: PKCE, state/cookie/sessão, uso único, escopos, verificação da conta, criptografia e transação mantidos. Falhas apagam o verificador temporário, liberam a trava e preservam a conta anterior. Nenhuma migração ou ativação das integrações reais.
+- Testes: 83 testes Node/SQLite passaram, incluindo novo teste no workerd/D1 (primeira conexão, reconexão, API desativada e rede). Casos de erro cobrem também HTML, JSON inválido/nulo, credenciais, consentimento, criptografia e persistência, sem mensagens reais. TypeScript, formato e guarda de segredos passaram. Seis fluxos privados e dez gerais passaram em navegador; erro de API com orientação persistente, referência, conta preservada, seis larguras e axe. Capturas em `oauth-diagnostic` no diretório de evidências externo ao Git.
+- Publicação autorizada: Workers público/privado atualizados com etag `39af9a6c44a81524d3e91b3e67553114ed34a1ce8244ca6c9d0f7f223a389732`. Assets públicos conferidos com o arquivo local; página/API/callback privados redirecionam ao Access sem identidade. Cinco Secrets privados preservados, nenhum público; simulação, IA mock e envio desativado conferidos após a atualização. Sem alteração de banco ou senha.
+- Browser plugin especializado ausente; Playwright/Chrome com Google fictício. Nenhum consentimento pessoal, leitura de caixa real, envio ou IA paga executados pelo Codex. Próxima verificação depende de nova autorização pessoal do titular; diagnóstico anterior não pode ser reconstruído retroativamente.
+
 ### Páginas públicas de apresentação, privacidade e termos — 24/10/2026
 
 - Solicitação: titular pediu os três endereços de Branding para passar OAuth de teste a produção; confirmou que ainda não possui domínio próprio.

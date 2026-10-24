@@ -500,3 +500,155 @@ test("mesmo ID de mensagem em duas contas é revisado separadamente", async () =
     f.cleanup();
   }
 });
+
+test("falhas Google são identificadas sem registrar payloads ou substituir a conta anterior", async () => {
+  for (const [status, payload, profile, expected] of [
+    [
+      400,
+      {
+        error: "invalid_client",
+        error_description: "private-provider-description",
+      },
+      false,
+      "GMAIL_OAUTH_CLIENT",
+    ],
+    [400, { error: "invalid_grant" }, false, "GMAIL_OAUTH_EXPIRED"],
+    [
+      500,
+      "<html>private-provider-description</html>",
+      false,
+      "GMAIL_PROVIDER_UNAVAILABLE",
+    ],
+    [
+      200,
+      "<html>private-provider-description</html>",
+      false,
+      "GMAIL_OAUTH_RESPONSE",
+    ],
+    [200, null, false, "GMAIL_OAUTH_RESPONSE"],
+    [
+      403,
+      {
+        error: {
+          details: [
+            {
+              reason: "SERVICE_DISABLED",
+              metadata: { secret: "private-provider-description" },
+            },
+          ],
+        },
+      },
+      true,
+      "GMAIL_API_DISABLED",
+    ],
+    [
+      403,
+      { error: { errors: [{ reason: "accessNotConfigured" }] } },
+      true,
+      "GMAIL_API_DISABLED",
+    ],
+    [
+      403,
+      { error: { errors: [{ reason: "forbidden" }] } },
+      true,
+      "GMAIL_PROFILE",
+    ],
+  ]) {
+    const f = await setup();
+    try {
+      const previous = await f.connect(first),
+        p = await f.begin(second);
+      const provider = globalThis.fetch;
+      globalThis.fetch = async (url, options) =>
+        String(url).endsWith(profile ? "/profile" : "/token")
+          ? typeof payload === "string"
+            ? new Response(payload, { status })
+            : Response.json(payload, { status })
+          : provider(url, options);
+      await assert.rejects(
+        finishGmailOAuth(p.request, f.env, f.repo, actor),
+        (e) => e.code === expected,
+      );
+      assert.equal(
+        (await gmailAccountStatus(f.repo, f.env)).connectionId,
+        previous.connectionId,
+      );
+      const failure = await f.db
+        .prepare(
+          "SELECT details_json FROM audit_log WHERE action='GMAIL_OAUTH_FAILED' ORDER BY occurred_at DESC LIMIT 1",
+        )
+        .first();
+      assert.equal(JSON.parse(failure.details_json).code, expected);
+      assert(!failure.details_json.includes("private-provider-description"));
+      assert(!failure.details_json.includes("dummy-"));
+      assert.equal(
+        (
+          await f.db
+            .prepare(
+              "SELECT count(*) n FROM gmail_oauth_requests WHERE status='FAILED' AND verifier_cipher=''",
+            )
+            .first()
+        ).n,
+        1,
+      );
+      assert.equal(
+        (await f.db.prepare("SELECT busy_until FROM gmail_control").first())
+          .busy_until,
+        0,
+      );
+    } finally {
+      f.cleanup();
+    }
+  }
+});
+
+test("falhas de rede, proteção e transação são separadas e preservam a conexão", async () => {
+  for (const stage of ["network", "protection", "storage"]) {
+    const f = await setup();
+    try {
+      const previous = await f.connect(first),
+        p = await f.begin(second);
+      f.setMailbox(second);
+      const rawBatch = f.db.batch.bind(f.db);
+      if (stage === "network")
+        globalThis.fetch = async () => {
+          throw new TypeError("private-provider-description");
+        };
+      if (stage === "protection")
+        f.env.SECRET_ENCRYPTION_KEY =
+          "different-test-protection-key-1234567890";
+      if (stage === "storage")
+        f.db.batch = async () => {
+          throw Error("D1_TYPE_ERROR private-provider-description");
+        };
+      const expected = {
+        network: "GMAIL_OAUTH_NETWORK",
+        protection: "GMAIL_OAUTH_PROTECTION",
+        storage: "GMAIL_OAUTH_STORAGE",
+      }[stage];
+      await assert.rejects(
+        finishGmailOAuth(p.request, f.env, f.repo, actor),
+        (e) => e.code === expected,
+      );
+      f.db.batch = rawBatch;
+      assert.equal(
+        (await gmailAccountStatus(f.repo, f.env)).connectionId,
+        previous.connectionId,
+      );
+      const failure = await f.db
+        .prepare(
+          "SELECT details_json FROM audit_log WHERE action='GMAIL_OAUTH_FAILED' ORDER BY occurred_at DESC LIMIT 1",
+        )
+        .first();
+      assert.equal(JSON.parse(failure.details_json).code, expected);
+      assert(!failure.details_json.includes("private-provider-description"));
+      assert(!failure.details_json.includes("dummy-"));
+      await assert.rejects(
+        finishGmailOAuth(p.request, f.env, f.repo, actor),
+        (e) => e.code === "GMAIL_OAUTH_STATE",
+      );
+    } finally {
+      f.cleanup();
+    }
+  }
+});

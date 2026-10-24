@@ -363,6 +363,12 @@ h1 span {
   font-size: 10px;
   margin: 18px 0 22px;
 }
+#gmail-oauth-feedback {
+  display: block;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 .notice > span:first-child {
   font-size: 15px;
   line-height: 1.2;

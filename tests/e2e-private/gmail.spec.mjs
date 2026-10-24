@@ -9,6 +9,7 @@ test("administrador conecta e troca caixas pelo Google sem mudar login nem exibi
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   let authorizedEmail = null;
+  let providerFailure = null;
   await page.route(
     "https://accounts.google.com/o/oauth2/v2/auth?**",
     async (route) => {
@@ -16,6 +17,7 @@ test("administrador conecta e troca caixas pelo Google sem mudar login nem exibi
       const code = JSON.stringify({
         email: authorizedEmail || url.searchParams.get("login_hint"),
         scope: url.searchParams.get("scope"),
+        failure: providerFailure,
       });
       const callback = new URL(url.searchParams.get("redirect_uri"));
       callback.searchParams.set("state", url.searchParams.get("state"));
@@ -61,6 +63,19 @@ test("administrador conecta e troca caixas pelo Google sem mudar login nem exibi
   authorizedEmail = "different-account@example.test";
   await connect("another-sender@example.test");
   await expect(page.locator("#toast")).toContainText("conta diferente");
+  await expect(page.locator("#gmail-account-panel .gmail-address")).toHaveText(
+    "institutional-sender@example.test",
+  );
+  authorizedEmail = null;
+  providerFailure = "api-disabled";
+  await connect("another-sender@example.test");
+  await expect(page.locator("#gmail-oauth-feedback")).toContainText(
+    "Ative a Gmail API",
+  );
+  await expect(page.locator("#gmail-oauth-feedback")).toContainText(
+    "Referência:",
+  );
+  await expect(page).not.toHaveURL(/reason=|ref=|gmail=/);
   await expect(page.locator("#gmail-account-panel .gmail-address")).toHaveText(
     "institutional-sender@example.test",
   );
