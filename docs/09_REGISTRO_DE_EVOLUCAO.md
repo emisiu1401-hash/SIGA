@@ -43,6 +43,16 @@ O estado abaixo substitui o registro inicial de 23/10, preservado como históric
 
 ## Registro de execução por incremento
 
+### Páginas públicas de apresentação, privacidade e termos — 24/10/2026
+
+- Solicitação: titular pediu os três endereços de Branding para passar OAuth de teste a produção; confirmou que ainda não possui domínio próprio.
+- Entrega: `sobre.html`, `privacidade.html`, `termos.html` e `info.css`, com informações da implementação atual e links nos rodapés do painel/login. Publicação no Worker público de demonstração; aplicação e banco privados continuam protegidos.
+- Conteúdo: finalidades, dados, permissões Gmail, limites de IA, destinatários de dados, credenciais, auditoria, revogação, retenção/exclusão e contato via administrador/suporte do consentimento. Não inventados prazos, aprovação Google/institucional ou canal público com e-mail pessoal.
+- Limite de produção: domínio verificável, revisão dos documentos e procedimentos do operador, e verificação/avaliação Google conforme escopos e exceções continuam pendentes. Publicar URLs não é homologação nem substitui cadastrar usuários de teste. Guia 21 detalha os limites.
+- Validação: novo fluxo Playwright cobre HTTP, CSP, links, conteúdo, ausência de rede externa, seis larguras e axe; executadas também as suítes geral e privada, build, TypeScript, formato e guarda de segredos. Capturas fora do repositório. Browser plugin especializado ausente; usados Playwright/Chrome e fixtures locais, sem login Google pessoal nem caixa real.
+- Resultado local: seis fluxos privados e nove regressões gerais passaram; o novo cenário das páginas passou em execução isolada. A primeira execução paralela das duas suítes conflitou no diretório de traces; o cenário foi repetido com diretório de artefatos separado. Não houve falha funcional no conteúdo.
+- Sem alteração de banco, credenciais, permissões de usuários ou modo das integrações. Deploy deve preservar a configuração remota atual, inclusive Secrets configurados pelo titular.
+
 ### Configuração Gmail compreensível — 24/10/2026
 
 - Relato: administrador salvou token de IA, encontrou "Aguardando OAuth" e não identificou como habilitar o e-mail.

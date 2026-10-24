@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Como o SIGA acessa, utiliza, armazena e compartilha dados e informações da conta Google autorizada."
+    />
+    <title>Política de Privacidade — SIGA</title>
+    <link rel="icon" href="/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/info.css" />
+  </head>
+  <body>
+    <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+    <header>
+      <a class="brand" href="/sobre.html"><img src="/mark.svg" alt="" />SIGA</a>
+      <nav aria-label="Informações do aplicativo">
+        <a href="/sobre.html">Sobre o SIGA</a
+        ><a href="/termos.html">Termos de uso</a>
+      </nav>
+    </header>
+    <main id="conteudo">
+      <p class="eyebrow">Transparência no uso de dados</p>
+      <h1>Política de Privacidade do SIGA</h1>
+      <p class="updated">Versão de 24 de outubro de 2026.</p>
+      <p>
+        Esta política descreve a implementação atual do Sistema Inteligente de
+        Gestão de Atividades (SIGA). O administrador da implantação gerencia
+        cadastros, autorizações, integrações e solicitações sobre os dados. A
+        demonstração pública e o ambiente privado são separados.
+      </p>
+      <h2>1. Dados tratados e finalidade</h2>
+      <ul>
+        <li>
+          Cadastro e acesso: nome, e-mail, perfil, seção, situação do cadastro e
+          informações necessárias à autenticação. Senhas individuais são
+          armazenadas por hash, sem recuperação do texto original.
+        </li>
+        <li>
+          Gestão de atividades: descrições, responsáveis, datas, prioridades,
+          referências de processos, decisões, justificativas e histórico de
+          ações, para organizar e acompanhar as demandas.
+        </li>
+        <li>
+          Auditoria: ator, instante, ação, recurso e resultado das operações.
+          Logs técnicos de segurança podem incluir dados necessários à prevenção
+          de abuso, como o endereço de rede. O SIGA não inclui senhas, tokens ou
+          corpos integrais de e-mail no log de auditoria.
+        </li>
+      </ul>
+      <h2>2. Acesso à conta Google</h2>
+      <p>
+        A conexão é iniciada pelo administrador e autorizada na página do
+        Google. O SIGA verifica a identidade da caixa e recebe credenciais OAuth
+        para operar as permissões concedidas. A senha da conta Google não é
+        solicitada pelo SIGA.
+      </p>
+      <ul>
+        <li>
+          <code>gmail.readonly</code>: permite consultar a caixa para receber e
+          revisar comunicações relacionadas às atividades. O coletor usa
+          identificadores, remetente, assunto, texto e informações de
+          autenticação/correlação. A permissão concedida pelo Google abrange a
+          leitura da caixa; o coletor processa mensagens em lotes limitados e
+          não importa todo o histórico anterior por padrão.
+        </li>
+        <li>
+          <code>gmail.send</code>: solicitada quando o administrador escolhe
+          permitir envio. É usada para notificações, comunicações de demandas e
+          recuperação de senha, quando o envio real estiver habilitado.
+        </li>
+      </ul>
+      <p>
+        O sistema não executa instruções ou códigos contidos em mensagens.
+        Anexos ficam fora da interpretação e links não são abertos
+        automaticamente. O SIGA mantém registros de revisão, cópias textuais
+        limitadas, propostas de extração e referências de mensagens; conteúdo
+        suspeito pode ser isolado em quarentena.
+      </p>
+      <h2>3. Armazenamento e proteção</h2>
+      <p>
+        A aplicação e o banco privado usam Cloudflare Workers e D1. Tokens de
+        conexão persistidos pelo SIGA são cifrados no servidor, com chave
+        separada em Secrets. Credenciais de infraestrutura e do cliente Google
+        também são mantidas no servidor. O código público não contém as
+        credenciais nem o banco privado.
+      </p>
+      <p>
+        O acesso privado combina identidade Cloudflare Access, MFA, senha
+        individual e papéis consultados no cadastro. Isso não elimina o acesso
+        técnico de administradores autorizados da infraestrutura nem oferece
+        garantia absoluta contra incidentes.
+      </p>
+      <h2>4. Compartilhamento e IA</h2>
+      <p>
+        Google processa autenticação e chamadas Gmail. Cloudflare hospeda a
+        aplicação, a proteção de acesso e os dados. Usuários autorizados podem
+        consultar informações conforme seu perfil e realizar exportações
+        permitidas. Esses destinatários e os administradores precisam observar
+        as regras da implantação.
+      </p>
+      <p>
+        A integração de IA externa é opcional e sua ativação é separada da
+        conexão Gmail. Quando o provedor OpenAI é habilitado, o texto novo
+        selecionado e limitado para análise é transmitido à API desse provedor
+        para propor intenções estruturadas. Credenciais, senhas, outras demandas
+        e acesso ao banco não são incluídos no prompt. A infraestrutura do
+        provedor passa a tratar o conteúdo enviado; o administrador deve avaliar
+        as condições de processamento e informar os usuários antes de ativar ou
+        alterar esse compartilhamento.
+      </p>
+      <p>
+        O SIGA não usa dados Google para publicidade, venda de dados ou
+        treinamento de modelos gerais. O uso das informações recebidas por APIs
+        Google deve obedecer à
+        <a
+          href="https://developers.google.com/terms/api-services-user-data-policy"
+          >Política de Dados do Usuário de Serviços de API do Google</a
+        >, incluindo os requisitos de Uso Limitado. Mudanças de finalidade ou de
+        compartilhamento exigem atualização da informação aos usuários e das
+        autorizações aplicáveis.
+      </p>
+      <h2>5. Retenção, revogação e exclusão</h2>
+      <p>
+        Os registros persistem na implantação para revisão, gestão e auditoria.
+        Esta versão não possui prazo global de expurgo nem exclusão automática
+        de todos os dados por usuário; o responsável pela operação deve definir
+        a retenção apropriada antes do uso institucional.
+      </p>
+      <p>
+        A autorização Google pode ser revogada na
+        <a href="https://myaccount.google.com/connections"
+          >página de conexões da conta Google</a
+        >. Revogar limita acessos futuros e não apaga os registros já recebidos
+        pelo SIGA. Trocar a caixa remove a credencial anterior do armazenamento
+        ativo do SIGA, mas não revoga automaticamente a autorização no Google.
+        Históricos e mensagens pendentes permanecem associados à caixa de
+        origem.
+      </p>
+      <p>
+        Solicitações de acesso, correção, exportação ou exclusão devem ser
+        dirigidas ao administrador. A remoção requer avaliação e procedimento
+        administrativo, inclusive quanto ao histórico de auditoria, exportações
+        e backups. Backups anteriores podem conter cópias cifradas e seguem o
+        controle de retenção do operador; não há promessa de eliminação imediata
+        de todas as cópias.
+      </p>
+      <h2>6. Contato e atualizações</h2>
+      <p>
+        Use o endereço de suporte indicado na tela de consentimento Google ou o
+        canal privado do administrador que concedeu seu acesso. Não inclua
+        conteúdo de mensagens, credenciais ou documentos pessoais em
+        solicitações públicas no repositório.
+      </p>
+      <p>
+        Esta página será atualizada quando as práticas descritas mudarem. Sua
+        publicação não certifica conformidade institucional, não substitui a
+        definição do responsável e da retenção aplicável e não representa
+        aprovação do aplicativo pelo Google.
+      </p>
+    </main>
+    <footer>
+      <nav aria-label="Documentos do SIGA">
+        <a href="/sobre.html">Sobre o SIGA</a
+        ><a href="/privacidade.html">Política de Privacidade</a
+        ><a href="/termos.html">Termos de Uso</a>
+      </nav>
+    </footer>
+  </body>
+</html>

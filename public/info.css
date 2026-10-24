@@ -1,0 +1,146 @@
+:root {
+  color-scheme: light;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #193b2e;
+  background: #f5f7f2;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  line-height: 1.7;
+}
+a {
+  color: #225c40;
+  text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
+}
+a:hover {
+  text-decoration-thickness: 2px;
+}
+a:focus-visible {
+  outline: 3px solid #225c40;
+  outline-offset: 5px;
+  border-radius: 2px;
+}
+.skip {
+  position: absolute;
+  top: -100px;
+  left: 12px;
+  padding: 12px;
+  background: white;
+}
+.skip:focus {
+  top: 10px;
+}
+header,
+main,
+footer {
+  max-width: 980px;
+  margin: auto;
+  padding: 26px 32px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #c8d5c9;
+}
+.brand {
+  font-size: 24px;
+  font-weight: 700;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand img {
+  width: 36px;
+  height: 36px;
+}
+nav,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+main {
+  background: #fff;
+  padding-top: 42px;
+  padding-bottom: 48px;
+}
+h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.2;
+  margin: 8px 0 22px;
+  letter-spacing: -0.025em;
+}
+h2 {
+  font-size: 22px;
+  line-height: 1.35;
+  margin-top: 34px;
+}
+p,
+ul {
+  max-width: 78ch;
+}
+li {
+  margin: 8px 0;
+}
+.eyebrow,
+.updated {
+  color: #49634f;
+  font-size: 14px;
+}
+.eyebrow {
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.notice {
+  padding: 18px 22px;
+  background: #edf3e8;
+  border-left: 4px solid #386948;
+  margin: 28px 0;
+}
+.button {
+  background: #225c40;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 6px;
+  text-decoration: none;
+  min-height: 44px;
+}
+footer {
+  font-size: 14px;
+  border-top: 1px solid #c8d5c9;
+}
+code {
+  overflow-wrap: anywhere;
+  font-size: 0.95em;
+}
+@media (max-width: 600px) {
+  header,
+  main,
+  footer {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+  main {
+    padding-top: 28px;
+  }
+  header {
+    gap: 6px;
+  }
+  nav {
+    gap: 4px 18px;
+  }
+}

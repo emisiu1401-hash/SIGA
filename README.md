@@ -24,6 +24,8 @@ Aplicação baseada na especificação v2.3: núcleo de regras determinísticas,
 
 - Quarentena de e-mails suspeitos, anexos fora da interpretação, propostas da IA sem autoridade e reescrita segura pelo gestor. [Proteções e limites](docs/20_SEGURANCA_DE_EMAIL_E_IA.md).
 
+- Páginas públicas de [apresentação](https://siga.emisiu1401.workers.dev/sobre.html), [privacidade](https://siga.emisiu1401.workers.dev/privacidade.html) e [termos](https://siga.emisiu1401.workers.dev/termos.html). [Preparação OAuth para produção e limites](docs/21_PAGINAS_PUBLICAS_E_OAUTH_PRODUCAO.md).
+
 ## Executar
 
 Requisitos: Node.js 24 e pnpm 11.

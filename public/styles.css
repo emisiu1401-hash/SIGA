@@ -1748,3 +1748,15 @@ dialog .timeline time,
   padding: 18px;
   color: #173c34;
 }
+
+.public-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.public-links a {
+  color: #225c40;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
