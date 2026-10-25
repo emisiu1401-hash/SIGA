@@ -1,5 +1,11 @@
 # Atualização de implementação — 24/10/2026
 
+## Correção de denominação institucional — 24/10/2026
+
+- Pedido expresso do titular: substituir o cabeçalho comum das telas por `DIRETORIA DE ADMINISTRAÇÃO, ORÇAMENTO E FINANÇAS`.
+- Alteração restrita ao texto em `public/index.html`, compartilhado pelos módulos do sistema. Sem mudança de dados ou regras.
+- Validação: build, formato do HTML e seis testes existentes de navegação/responsividade (360/390/768/1024/1366/1920 px). Publicação preserva configurações e Secrets remotos.
+
 ## Cadastro e estatísticas da DAO — 24/10/2026
 
 - Autorização: titular solicitou atualizar sua lotação de Não classificada para DAO e incluir as estatísticas dessa área, pois também pode executar demandas.
