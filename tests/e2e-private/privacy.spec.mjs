@@ -3,6 +3,51 @@ import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+test("DAO: cartão, filtro e lotação do titular em seis larguras", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await expect(
+    page
+      .locator('#department option[value="DAO"], #department option')
+      .filter({ hasText: /^DAO$/ }),
+  ).toHaveCount(1);
+  for (const width of [360, 390, 768, 1024, 1366, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    const card = page.locator('#department-cards [data-department="DAO"]');
+    await expect(card).toBeVisible();
+    await card.click();
+    await expect(page.locator("#department")).toHaveValue("DAO");
+    const data = await (
+      await page.request.get("/api/dashboard?department=DAO")
+    ).json();
+    expect(data.sections.some((s) => s.name === "DAO")).toBe(true);
+    expect(data.rows.every((r) => r.department === "DAO")).toBe(true);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+    if (process.env.SIGA_EVIDENCE_DIR && [390, 1366].includes(width)) {
+      mkdirSync(process.env.SIGA_EVIDENCE_DIR, { recursive: true });
+      await page.screenshot({
+        path: join(process.env.SIGA_EVIDENCE_DIR, `dao-${width}.png`),
+        fullPage: true,
+      });
+    }
+  }
+  await page.goto("/#team");
+  const owner = page.locator("tr").filter({ hasText: "Titular de teste" });
+  await expect(owner).toContainText("DAO");
+  await expect(owner).toContainText("ADMIN");
+  await expect(owner).toContainText("EXECUTOR");
+  await expect(owner).toContainText("GESTOR");
+  await expect(owner).toContainText("Ativo");
+  expect(errors).toEqual([]);
+});
+
 test("identidade privada abre base vazia; cadastro persiste e token não retorna ao navegador", async ({
   page,
 }) => {

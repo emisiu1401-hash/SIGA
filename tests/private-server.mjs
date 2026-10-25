@@ -32,7 +32,7 @@ await db
   .run();
 await db
   .prepare(
-    "INSERT INTO users(id,full_name,email,active,created_at,department_id) VALUES('u-gestor','Titular de teste','owner@example.test',1,?,'dept-ae')",
+    "INSERT INTO users(id,full_name,email,active,created_at,department_id) VALUES('u-gestor','Titular de teste','owner@example.test',1,?,'dept-dao')",
   )
   .bind(at)
   .run();

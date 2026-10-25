@@ -138,7 +138,7 @@ export async function exportSpreadsheet(
       "A prévia não altera dados. Revise as diferenças e confirme. Arquivos desatualizados precisam ser exportados novamente.",
     ],
     [
-      "Prioridades: BAIXA; MEDIA; ALTA. Seções: SLC; SAP; SME; AE. Papéis ordinários: EXECUTOR; SDG_LEITOR; ADMIN.",
+      "Prioridades: BAIXA; MEDIA; ALTA. Seções: DAO; SLC; SAP; SME; AE. Papéis ordinários: EXECUTOR; SDG_LEITOR; ADMIN.",
     ],
     [
       "A versão e os identificadores não devem ser editados. Cadastro do gestor e do sistema são protegidos.",

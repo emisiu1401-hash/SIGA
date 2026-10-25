@@ -65,7 +65,7 @@ export class Repository {
       "Nome e e-mail válidos são obrigatórios.",
     );
     assert(
-      p.department && ["SLC", "SAP", "SME", "AE"].includes(p.department),
+      p.department && ["DAO", "SLC", "SAP", "SME", "AE"].includes(p.department),
       "DEPARTMENT",
       "Selecione uma seção cadastrada.",
     );
@@ -625,7 +625,7 @@ export async function dashboard(
     originalDenominator: validClosed.length,
     maxLate: Math.max(0, ...rows.map((r) => r.lateDays)),
   };
-  const sections = ["SLC", "SAP", "SME", "AE", "Não classificada"].map(
+  const sections = ["DAO", "SLC", "SAP", "SME", "AE", "Não classificada"].map(
     (name) => {
       const rs = rows.filter(
           (r) => (r.department || "Não classificada") === name,

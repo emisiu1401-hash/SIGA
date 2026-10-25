@@ -1,5 +1,17 @@
 # Atualização de implementação — 24/10/2026
 
+## Cadastro e estatísticas da DAO — 24/10/2026
+
+- Autorização: titular solicitou atualizar sua lotação de Não classificada para DAO e incluir as estatísticas dessa área, pois também pode executar demandas.
+- Migration aditiva `0009_dao_department.sql` cadastra DAO como unidade executora própria. O consolidado de todas as áreas continua separado desse recorte; cada demanda conta uma vez.
+- Atualização administrativa do titular no ambiente privado: lotação DAO, revisão incrementada, ativo e papéis ADMIN/EXECUTOR/GESTOR preservados. Histórico de lotação e `PERSON_UPDATED` registram autor, UTC, antes/depois e motivo. Nenhuma alteração de senha, e-mail, atribuição ou encerramento.
+- DAO incluída na validação de cadastro, filtro, gráficos, cartão da área, exportações e instruções/lista do template Excel. Estatísticas seguem as mesmas definições das outras unidades. Propostas entram na unidade responsável após aceite; alteração cadastral não reescreve snapshots ou demandas antigas.
+- Arquivos: `src/repository.ts`, `src/spreadsheets.ts`, `public/app.js`, `public/index.html`, template Excel, migration, testes de domínio/privacidade e fixture privada.
+- Validação local: build, TypeScript, 84 testes Node/SQLite, 11 e2e gerais, 9 e2e privados, formato, verificações de segredos e três validadores Python passaram. Caso DAO cobre cadastro, autoatribuição com justificativa/prazo, aceite, recorte DAO+titular, contagem sem duplicação e preservação histórica. Navegador: 360/390/768/1024/1366/1920 px, sem erros de página ou overflow geral; Browser plugin ausente, usado Playwright/Chrome.
+- Template Excel editado com artifact-tool; comparação preserva dados e colunas das três abas, acrescentando DAO às instruções e validação de seção. Evidências locais de tela e planilha em pasta de visualizações da conversa, subpasta `dao`.
+- Publicação autorizada pelo pedido de atualização do sistema. Preservar as variáveis, Secrets e agendamentos remotos atuais, inclusive alterações de Gmail feitas pelo titular. Este incremento não lê nem envia e-mails, não ativa IA e não declara homologação institucional.
+
+
 O estado abaixo substitui o registro inicial de 23/10, preservado como histórico mais adiante.
 
 - Autorização: pedido direto do responsável para ler a pasta, criar o projeto completo, publicar repositório público SIGA e usar GitHub/Gmail/Cloudflare; não houve pedidos de aceite por incremento.
